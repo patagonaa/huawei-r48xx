@@ -16,4 +16,4 @@ Fits at least R4850G2
 
 ### [PHZ-F020304-BW00x](./connectors/PHZ-F020304-BW001/PHZ-F020304-BW00X系列连接器（85A\).docx)
 My R4830S1 came with one, so it does definitely fit that.
-I've also created a basic OpenSCAD model for possibly integrating it into projects.
+I've also created a basic OpenSCAD model (under `connectors/PHZ-F020304-BW001`) for possibly integrating it into projects.
