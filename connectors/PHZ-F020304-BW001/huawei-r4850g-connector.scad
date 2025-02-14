@@ -1,5 +1,7 @@
 $fn = $preview ? 16 : 32;
 
+intersectMargin=0.01;
+
 module connector(){
     connectorMainPartWidth = 85 + 0.35;
     connectorMainPartHeight = 9.7;
@@ -49,7 +51,7 @@ module connector(){
             }
         }
         
-        translate([connectorMainPartWidth/2,earPos,0]){            
+        translate([connectorMainPartWidth/2 - intersectMargin,earPos,0]){            
             holePositionX = holeCenterDistance/2 - connectorMainPartWidth/2;
             holePositionY = 3.2 + holeDiameter/2; // measured by hand
             
@@ -60,12 +62,12 @@ module connector(){
             difference(){
                 union(){
                     translate([0,earDepth,0])
-                    rotate([90,0,0])
+                        rotate([90,0,0])
                         linear_extrude(earDepth)
                         earShape();
                     
                     translate([nubPositionX,nubPositionZ,nubPositionY])
-                    rotate([-90,0,0])
+                        rotate([-90,0,0])
                         cylinder(nubLength, d=nubDiameter);
                 }
                 translate([holePositionX,0,holePositionY])
