@@ -61,12 +61,14 @@ module holderFront()
 
 connectorTolerance = 0.2;
 
+holderBackPosition = 12;
+
 module holderBack()
 {
     difference(){
-        translate([0,- frontDepth - profileLength + 10,0])
+        translate([0,- frontDepth - profileLength ,0])
         {
-            translate([0, 10, 0])
+            translate([0, holderBackPosition, 0])
             {
                 holderMount();
                 mirror([1,0,0])
@@ -75,12 +77,12 @@ module holderBack()
         
             difference()
             {
-                translate([0,-holderDepth/2 + 10,0])
+                translate([0,-holderDepth/2 + holderBackPosition,0])
                     cube([frontWidth+holderWidth*2, holderDepth, frontHeight+holderWidth*2], center=true);
                 translate([0,-holderDepth/2,0])
-                    cube([86, holderDepth, profileHeight], center=true);
+                    cube([86, holderDepth+1, profileHeight], center=true);
                 
-                translate([0,0,-profileHeight/2])
+                translate([0,0.5,-profileHeight/2])
                     rotate([0,0,180])
                     minkowski()
                     {
@@ -92,12 +94,12 @@ module holderBack()
                     minkowski()
                     {
                         rotate([-90,0,0])
-                        linear_extrude(20)
-                        projection()
-                        {
-                            rotate([90,0,0])
-                                connector(true);
-                        }
+                            linear_extrude(30)
+                            projection()
+                            {
+                                rotate([90,0,0])
+                                    connector(true);
+                            }
                         sphere(r=connectorTolerance);
                     }
             }
@@ -108,9 +110,6 @@ module holderBack()
     }
 }
 
-
-
-    
 
 if($preview)
 {

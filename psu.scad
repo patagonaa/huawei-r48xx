@@ -1,6 +1,6 @@
-frontWidth = 107;
-frontHeight = 42.1;
-frontDepth = 5.4;
+frontWidth = 107.5;
+frontHeight = 42.6;
+frontDepth = 6;
 
 profileWidth = 105.5;
 profileHeight = 41.2;
@@ -18,8 +18,11 @@ connectorTabHeight = 1.1;
 
 connectorTabClearance = 1;
 
-keyLength = 4.5;
+keyLength = 5.5;
 keyPos = 11;
+keyHeight = 3;
+
+releaseNubLength = 2;
 
 module psuProfileHalf()
 {
@@ -63,8 +66,12 @@ module psu()
                 square([connectorTab2Width + connectorTabClearance,connectorTabHeight]);
         }
     // locking nub
-    translate([-profileWidth/2, -frontDepth - keyLength - keyPos, -profileHeight/2])
-        cube([railWidth + 0.01,keyLength,railHeightBottom + 0.01]);
+    translate([-profileWidth/2, -frontDepth - keyLength - keyPos, -profileHeight/2 - keyHeight + railHeightBottom])
+        cube([railWidth + 0.01,keyLength,keyHeight + 0.01]);
+    
+    // release nub
+    translate([-profileWidth/2, -frontDepth - releaseNubLength, -profileHeight/2])
+        cube([railWidth + 0.01,releaseNubLength,railHeightBottom + 0.01]);
 }
 
 //psu();
