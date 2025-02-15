@@ -2,6 +2,10 @@ $fn = $preview ? 16 : 64;
 include <psu.scad>
 use <connectors/PHZ-F020304-BW001/huawei-r4850g-connector.scad>
 
+// do not use stable version (2021.01) to render this
+// use nightly builds and set backend to "Manifold"
+// or this will take forever to render.
+
 holderDepth = 35;
 holderWidth = 3;
 
@@ -14,13 +18,13 @@ module mountHole()
     translate([0,0,-100 + 0.01])
         cylinder(h=100, d=mountScrewDiameter);
     translate([0,0,-0.01])
-        cylinder(h=100, d=10);
+        cylinder(h=100, d=11);
     translate([0,0,-mountScrewSinkDepth])
         cylinder(h=mountScrewSinkDepth, d1=0, d2=mountScrewHeadDiameter);
     
 }
 
-mountWidth = 10;
+mountWidth = 15;
 mountHolePos = 8;
 mountScrewHeight = 6;
 
@@ -52,7 +56,18 @@ module holderFront()
             cube([frontWidth+holderWidth*2, holderDepth, frontHeight+holderWidth*2], center=true);
 
         psu();
+        
+        translate([0,-1,0])
+            rotate([-90,0,0])
+            minkowski()
+            {
+                linear_extrude(0.001)
+                    square([frontWidth,frontHeight], center=true);
+                cylinder(h=4, r1=0, r2=4);
+            }
     }
+
+
     
     holderMount();
     mirror([1,0,0])
