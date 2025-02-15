@@ -2,7 +2,7 @@ $fn = $preview ? 16 : 32;
 
 intersectMargin=0.01;
 
-module connector(){
+module connector(includeScrew){
     connectorMainPartWidth = 85 + 0.35;
     connectorMainPartHeight = 9.7;
     
@@ -69,10 +69,20 @@ module connector(){
                     translate([nubPositionX,nubPositionZ,nubPositionY])
                         rotate([-90,0,0])
                         cylinder(nubLength, d=nubDiameter);
+                    
+                    if(includeScrew)
+                    {
+                        translate([holePositionX,0,holePositionY])
+                            rotate([-90,0,0])
+                            cylinder(80,d=holeDiameter,center=true);
+                    }
                 }
-                translate([holePositionX,0,holePositionY])
-                    rotate([-90,0,0])
-                    cylinder(40,d=holeDiameter,center=true);
+                if(!includeScrew)
+                {
+                    translate([holePositionX,0,holePositionY])
+                        rotate([-90,0,0])
+                        cylinder(40,d=holeDiameter,center=true);
+                }
             }
         }
     }
@@ -83,4 +93,46 @@ module connector(){
         ear();
 }
 
-connector();
+connector(false);
+
+//psuWidth = 105; // verify
+//psuHeight = 40.8; // verify
+//psuDepth = 281; // verify
+//
+//psuConnectorEarDistance = 7.8 + intersectMargin; // verify
+//
+//module psu(){
+//    translate([-psuWidth/2,-psuDepth + psuConnectorEarDistance,0])
+//        cube([psuWidth,psuDepth,psuHeight]);
+//}
+
+//if($preview && false){
+////color("grey", 0.5)
+//    //psu();
+//color([0.4, 0.4, 0.4])
+//    connector();
+//}
+//partDepth = 50;
+//
+//partHoleWidth = psuWidth - 18;
+//partHoleDepth = partDepth - 2;
+//partHoleHeight = psuHeight - 4;
+//
+//module part(){
+//    difference(){
+//        union(){
+//            translate([-psuWidth/2,psuConnectorEarDistance,intersectMargin])
+//                cube([psuWidth,partDepth,psuHeight]);
+//        }
+//        translate([-partHoleWidth/2, psuConnectorEarDistance - intersectMargin, (psuHeight / 2) - partHoleHeight/2])
+//            cube([partHoleWidth,partHoleDepth,partHoleHeight]);
+//        
+//        minkowski(){
+//            connector();
+//            if(!$preview)
+//                sphere(0.1);
+//        }
+//    }
+//}
+//
+//part();
