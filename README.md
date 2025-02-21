@@ -61,12 +61,14 @@ This information was put together from several sources, such as:
 - https://endless-sphere.com/sphere/threads/rectifier-huawei-r4850g2-48v-42-58v-3000w.86038/post-1807301
 - https://github.com/BotoX/huawei-r48xx-esp32
 - https://github.com/577fkj/PowerControl/blob/c6d06935af79fcdbf3e71d1ad7ea4a86cd0c756f/main/src/protocol/huawei_r48xx.c
+- https://max.book118.com/html/2022/0414/5230000111004213.shtm
+    - see `docs/`
 
 ### General
 
 The CAN interface uses 125kbps rate with extended 29-bit identifiers.
 
-The CAN message IDs do not specify a single value/parameter. Instead, the message ID is used as an address, function code, message direction and possibly more.
+The CAN message IDs do not specify a single value/register. Instead, the message ID is used as an address, function code, message direction and possibly more.
 
 Examples:
 - `108040FE`
@@ -80,14 +82,15 @@ Examples:
 - `128250FE`
 
 Interpretation:  
-Bits: `000a aaaa abbb bbbb cccc cccc deee eeef`
-- 0 (bit 31-29): always zero
+Bits: `000a aaaa abbb bbbb cccc cccc deee eefg`
+- 0 (bit 31-29): always zero (CAN ID is 29-bit)
 - a (bit 28-23): protocol ID (always `21`)
-- b (bit 22-16): address (0 = broadcase, 1 = first, ... - PSU IDs somehow get auto-assigned via bus)
+- b (bit 22-16): address (0 = broadcast, 1 = first, ... - PSU IDs somehow get auto-assigned via bus)
 - c (bit 15-8): command id
 - d (bit 7): message source (0 = from PSU, 1 = to PSU)
-- e (bit 6-1): rev (always `3F`)
-- f (bit 0): finished marker (0 = finished, 1 = more data coming)
+- e (bit 6-2): group mask (always `1F`)
+- f (bit 1): hardware / software address (0 = hw, 1 = sw, always 1)
+- g (bit 0): finished marker (0 = finished, 1 = more data coming)
 
 There are several known commands and responses:
 
@@ -95,48 +98,51 @@ There are several known commands and responses:
 Example (to PSU):
 `108140FE: 00 00 00 00 00 00 00 00`
 
-Requests a status response.
+Requests a status response composed of multiple messages.
 
 ### `40` Data Reponse
 Example (from PSU):
 ```
 1081407F: 01 0E 00 00 00 00 2A 01
-1081407F: 01 70 00 00 00 00 00 00
-1081407F: 01 71 00 00 00 00 C8 00
-1081407F: 01 72 00 00 00 00 00 00
-1081407F: 01 73 00 00 00 00 00 00
-1081407F: 01 74 00 00 00 00 00 00
-1081407F: 01 75 00 00 00 00 C7 92
-1081407F: 01 76 00 00 00 00 00 00
-1081407F: 01 78 00 00 00 03 B5 40
-1081407F: 01 7F 00 00 00 00 70 00
-1081407F: 01 80 00 00 00 00 7C 00
-1081407F: 01 81 00 00 00 00 00 00
-1081407F: 01 82 00 00 00 00 00 00
-1081407E: 01 83 00 00 00 00 00 00
+1081407F: 01 70 00 00 00 1C DC 31
+1081407F: 01 71 00 00 00 00 C7 F5
+1081407F: 01 72 00 00 00 00 20 91
+1081407F: 01 73 00 00 00 1C 20 9A
+1081407F: 01 74 00 00 00 00 03 E6
+1081407F: 01 75 00 00 00 00 CD B1
+1081407F: 01 76 00 00 00 00 04 00
+1081407F: 01 78 00 00 00 03 8B 80
+1081407F: 01 7F 00 00 00 00 84 00
+1081407F: 01 80 00 00 00 00 6C 00
+1081407F: 01 81 00 00 00 00 8C 11
+1081407F: 01 82 00 00 00 00 8C 07
+1081407E: 01 83 00 00 10 00 00 00
 ```
 
 Data bytes:
-- byte 0-1: parameter id?
+- byte 0-1: register id
 - bytes 2-3: ? (always 0)
 - bytes 4-7: int32 value
 
-Parameter values:
-- `01 0E`: Working Hours (?)
-- `01 70`: Input Power ( / 1024)
-- `01 71`: Input Frequency ( / 1024)
-- `01 72`: Input Current ( / 1024)
-- `01 73`: Output Power ( / 1024)
-- `01 74`: Efficiency ( / 1024)
-- `01 75`: Output Voltage ( / 1024)
-- `01 76`: Output Current Setpoint ( / 1024)
-    - Possibly percent value (0-1), can be converted by multiplying by nominal PSU current (~35 for R4830, ~53 for R4850)
-    - The actual output current limit as determined by AC and output current limits (gets lower when AC limit is set)
-- `01 78`: Input Voltage ( / 1024)
-- `01 7F`: Output Temperature ( / 1024)
-- `01 80`: Input Temperature ( / 1024)
-- `01 81`: Output Current (seems to be more accurate) ( / 1024)
-- `01 82`: Output Current(?) ( / 1024)
+Register values:
+| register id | example                         | description                                      |
+| ----------- | ------------------------------- | ------------------------------------------------ |
+| `01 0E`     | `00 00 00 00 2A 01` = 10753 Hrs | Operating Hours (?)                              |
+| `01 70`     | `00 00 00 1C DC 31` = 1847W     | Input Power ( / 1024 = A)                        |
+| `01 71`     | `00 00 00 00 C7 F5` = 49.99Hz   | Input Frequency ( / 1024 = Hz)                   |
+| `01 72`     | `00 00 00 00 20 91` = 8.14A     | Input Current ( / 1024 = A)                      |
+| `01 73`     | `00 00 00 1C 20 9A` = 1800W     | Output Power ( / 1024 = W)                       |
+| `01 74`     | `00 00 00 00 03 E6` = 97%       | Efficiency ( / 1024 = 0-1)                       |
+| `01 75`     | `00 00 00 00 CD B1` = 51.4V     | Output Voltage ( / 1024 = V)                     |
+| `01 76`     | `00 00 00 00 04 00` = 100%      | Output Current Setpoint\* ( / 1024 = 0-1)        |
+| `01 78`     | `00 00 00 03 8B 80` = 226.8V    | Input Voltage ( / 1024 = V)                      |
+| `01 7F`     | `00 00 00 00 84 00` = 33°C      | Output Temperature ( / 1024 = °C)                |
+| `01 80`     | `00 00 00 00 6C 00` = 27°C      | Input Temperature ( / 1024 = °C)                 |
+| `01 81`     | `00 00 00 00 8C 11` = 35.02A    | Output Current 1 (fast/unfiltered) ( / 1024 = A) |
+| `01 82`     | `00 00 00 00 8C 07` = 35.01A    | Output Current 2 (slow/filtered) ( / 1024 = A)   |
+
+\* Percent value (0-1), can be converted by dividing by nominal PSU current (~35 for R4830, ~53 for R4850).
+The actual output current limit as determined by AC and output current limits (this number gets lower when AC limit is set)
 
 ### `50` Info Request
 Example (to PSU): `108150FE: 00 00 00 00 00 00 00 00`
@@ -153,13 +159,18 @@ Example (from PSU):
 ```
 
 Data bytes:
-- byte 0-1: parameter id
-- bytes 2-3: ? (always 0)
+- byte 0-1: register id
 - bytes 2-7: data
 
-Parameters:
-- `00 01`: Rated Current: (>> 16 / 10)?
-- `00 03`, `00 04`: Barcode (ASCII)
+Registers:
+| register id | data                | example                                                                      | description                                                             |
+| ----------- | ------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `00 01`     | `?? ?? ?? ?? ?? ??` | `00 01 00 00 40 46 12 67` (R4830S1) /<br>`00 01 00 00 40 68 0E 2C` (R4850G6) | Module characteristic data(?)                                           |
+| `00 02`     | `xx xx xx xx xx xx` | `00 02 64 46 85 50 02 AF` = ?                                                | Serial number                                                           |
+| `00 03`     | `xx xx xx xx xx xx` | `00 03 32 31 30 32 33 31` = "210231"                                         | Barcode part 1 (ASCII)                                                  |
+| `00 04`     | `xx xx xx xx xx xx` | `00 04 31 54 52 52 4C 55` = "1TRRLU"                                         | Barcode part 2 (ASCII)                                                  |
+| `00 05`     | `xx xx yy yy zz zz` | `00 05 05 00 01 0D 01 0D`                                                    | `xx` = HW version,<br>`yy` = DC-DC SW version,<br>`zz` = PFC SW version |
+| `00 06`     | `xx xx 00 00 00 00` | `00 06 01 01 00 00 00 00`                                                    | Hardware address                                                        |
 
 ### `D2` E-Label Request
 Example (to PSU): `1081D2FE: 00 00 00 00 00 00 00 00`
@@ -172,52 +183,7 @@ Example (from PSU):
 1081D27F: 00 02 68 69 76 65 73 49
 1081D27F: 00 03 6E 66 6F 20 56 65
 1081D27F: 00 04 72 73 69 6F 6E 5D
-1081D27F: 00 05 0D 0A 2F 24 41 72
-1081D27F: 00 06 63 68 69 76 65 73
-1081D27F: 00 07 49 6E 66 6F 56 65
-1081D27F: 00 08 72 73 69 6F 6E 3D
-1081D27F: 00 09 33 2E 30 0D 0A 0D
-1081D27F: 00 0A 0A 0D 0A 5B 42 6F
-1081D27F: 00 0B 61 72 64 20 50 72
-1081D27F: 00 0C 6F 70 65 72 74 69
-1081D27F: 00 0D 65 73 5D 0D 0A 42
-1081D27F: 00 0E 6F 61 72 64 54 79
-1081D27F: 00 0F 70 65 3D 45 4E 31
-1081D27F: 00 10 4D 52 43 33 53 31
-1081D27F: 00 11 41 31 0D 0A 42 61
-1081D27F: 00 12 72 43 6F 64 65 3D
-1081D27F: 00 13 32 31 30 32 33 31
-1081D27F: 00 14 31 54 52 52 4C 55
-1081D27F: 00 15 4C 34 30 30 30 36
-1081D27F: 00 16 38 37 0D 0A 49 74
-1081D27F: 00 17 65 6D 3D 30 32 33
-1081D27F: 00 18 31 31 54 52 52 0D
-1081D27F: 00 19 0A 44 65 73 63 72
-1081D27F: 00 1A 69 70 74 69 6F 6E
-1081D27F: 00 1B 3D 46 75 6E 63 74
-1081D27F: 00 1C 69 6F 6E 20 4D 6F
-1081D27F: 00 1D 64 75 6C 65 2C 52
-1081D27F: 00 1E 34 38 33 30 53 31
-1081D27F: 00 1F 2C 45 4E 31 4D 52
-1081D27F: 00 20 43 33 53 31 41 31
-1081D27F: 00 21 2C 31 55 32 30 30
-1081D27F: 00 22 30 57 20 53 75 70
-1081D27F: 00 23 65 72 20 48 69 67
-1081D27F: 00 24 68 20 45 66 66 69
-1081D27F: 00 25 63 69 65 6E 63 79
-1081D27F: 00 26 20 52 65 63 74 69
-1081D27F: 00 27 66 69 65 72 2C 44
-1081D27F: 00 28 53 20 53 70 65 63
-1081D27F: 00 29 69 61 6C 0D 0A 4D
-1081D27F: 00 2A 61 6E 75 66 61 63
-1081D27F: 00 2B 74 75 72 65 64 3D
-1081D27F: 00 2C 32 30 32 30 2D 30
-1081D27F: 00 2D 35 2D 30 36 0D 0A
-1081D27F: 00 2E 56 65 6E 64 6F 72
-1081D27F: 00 2F 4E 61 6D 65 3D 48
-1081D27F: 00 30 75 61 77 65 69 0D
-1081D27F: 00 31 0A 49 73 73 75 65
-1081D27F: 00 32 4E 75 6D 62 65 72
+[...]
 1081D27F: 00 33 3D 30 30 0D 0A 43
 1081D27F: 00 34 4C 45 49 43 6F 64
 1081D27F: 00 35 65 3D 0D 0A 42 4F
@@ -245,49 +211,80 @@ CLEICode=
 BOM=
 ```
 
-### `80` Parameter Set Request
-Example (to PSU): `108180FE: 01 34 00 00 00 00 00 00`
+### `80` Register Set Request
+Example (to PSU): `108180FE: 01 34 00 01 00 00 00 00`
 
 Data bytes:
-- Byte 0-1: parameter id
+- Byte 0-1: register id
 - Byte 2-7: data
 
-Parameters:
-- int32 in bytes 4-7
-    - `01 00`: Online output voltage (* 1024)
-    - `01 01`: Offline output voltage (* 1024)
-    - `01 02`: Overvoltage protection? (* 1024)
-    - `01 03`: Online current limit (* 1024)
-        - Possibly percent value (0-1), can be converted by dividing by nominal PSU current (~35 for R4830, ~53 for R4850)
-    - `01 04`: Offline current limit (* 1024)
-        - Possibly percent value (0-1), can be converted by dividing by nominal PSU current (~35 for R4830, ~53 for R4850)
-- `01 09`: Input current limit (* 1024)
-    - limit active in byte 3 (`00` = limit inactive, `01` = limit active)
-    - value in bytes 4-7
-- bool in byte 3
-    - `01 32`: Standby (`00` = PSU on, `01` = PSU standby)
-    - `01 34`: Online fan mode (`00` = auto, `01` = full speed)
-    - `01 35`: Offline fan mode (`00` = auto, `01` = full speed)
+Registers:
+| register id | data                | example                                                                               | description                                                            |
+| ----------- | ------------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `01 00`     | `00 00 xx xx xx xx` | 53.5V * 1024<br>= 0x0000D600= `01 00 00 00 00 00 D6 00`                               | Online output voltage (V * 1024)                                       |
+| `01 01`     | `00 00 xx xx xx xx` |                                                                                       | Offline output voltage (V * 1024)                                      |
+| `01 02`     | `00 00 xx xx xx xx` |                                                                                       | Overvoltage protection? (V * 1024)                                     |
+| `01 03`     | `00 00 xx xx xx xx` | 3.5A / 35A (for R4830) = 10% = 0.1 * 1024<br>≈ 0x00000066 = `01 03 00 00 00 00 00 66` | Online current limit\* (0-1 * 1024)                                    |
+| `01 04`     | `00 00 xx xx xx xx` |                                                                                       | Offline current limit\* (0-1 * 1024)                                   |
+| `01 09`     | `00 xx yy yy yy yy` |                                                                                       | `xx` = limit active<br>yy = input current limit (A * 1024)             |
+| `01 14`     | `xx xx 00 00 00 00` | 50% = 0.5 * 25600<br>= 12800 = `01 14 32 00 00 00 00 00`                              | Fan duty cycle (0-1 * 25600)                                           |
+| `01 18`     | `00 00 xx xx xx xx` | 60s = `01 18 00 00 00 00 00 3C`                                                       | CAN timeout seconds (5-60)                                             |
+| `01 32`     | `00 xx 00 00 00 00` |                                                                                       | Standby (0 = PSU on, 1 = standby)                                      |
+| `01 34`     | `00 xx 00 00 00 00` |                                                                                       | Fan mode<br>`00` = auto<br>`01` = max (online)<br>`02` = max (offline) |
 
-### `80` Parameter Set Response
-Example (from PSU): `1081807E: 01 34 00 00 00 00 00 00`
+\* Percent value (0-1), can be converted by dividing by nominal PSU current (~35 for R4830, ~53 for R4850)  
+
+### `80` Register Set Response
+Example (from PSU): `1081807E: 01 34 00 01 00 00 00 00`
 
 Data bytes:
-- Byte 0: status (`01` = ok, `21` = error)
-- Byte 1-7: copied from request
+- Byte 0 (low nibble): status (`0` = ok, `2` = parameter error)
+- Byte 0 (high nibble) - 7: copied from request
+
+### `82` Register Get Request
+Example (to PSU):
+`108182FE: 01 34 00 00 00 00 00 00`
+
+Seems to work only for status registers (`01 70`, ...) not for config registers (`01 00`, ...).
+
+Data bytes:
+- Byte 0-1: register id
+- Byte 2-7: zero
+
+### `82` Register Get Response
+Example (to PSU):
+`1081827E: 01 34 00 01 00 00 00 00`
+
+Data bytes:
+- Byte 0 (low nibble): status (`0` = ok, `2` = parameter error)
+- Byte 0 (high nibble) - 1: register id
+- Byte 2-7: register value
+
+Registers (in addition to ones from `40` data response);
+| register id | data                | example                                                  | description                                                                |
+| ----------- | ------------------- | -------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `01 87`     | `xx xx yy yy zz zz` | `01 87 2D 00 64 00 4B 87` = calc 45%, set 100%, 19335RPM | `xx` = calculated\* duty cycle(?), `yy` = duty cycle (/ 25600), `zz` = RPM |
+
+\* possibly the duty cycle the PSU requests to be set based on the temperature
 
 ### `11` Current (Unsolicited)
 Example (from PSU):
 ```
-1001117E: 00 01 00 00 00 00 00 00
-108111FE: 00 03 00 00 00 01 00 00
+1001117E: 00 01 00 00 00 00 04 00
+108111FE: 00 03 00 00 00 01 04 00
 ```
 
-Message source bit in CAN ID has to be checked as the PSU publishes both directions(?).
+Both `1001117E` (`00 01`) and `108111FE` (`00 03`) sent every 377ms without request.
 
 Data bytes:
-- Byte 0-2: ?
-- Byte 3: Ready status (`00` = ready, ?? = not ready)
-- Byte 5: Active status (`00` = off, `01` = on)
-- Bytes 6-7: (u)int16 output current (/ 1024)
-    - Possibly percent value (0-1), can be converted by multiplying by nominal PSU current (~35 for R4830, ~53 for R4850)
+- Byte 0-2: register id (?)
+- Bytes 2-7: register values (?)
+
+| register id | data                | example                                       | description                                                                                   |
+| ----------- | ------------------- | --------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `00 01`     | `?? xx ?? ?? yy yy` | `00 01 00 00 00 00 04 00` = ready, 100% load  | `xx` = ready\*\* status (`00` = ready, `01` = not ready)<br>`yy` = Output current\* (0-1 / 1024)    |
+| `00 03`     | `?? ?? ?? xx yy yy` | `00 03 00 00 00 01 00 00` = active, 100% load | `xx` = active\*\*\* status (`00` = not active, `01` = active)<br>`yy` = Output current\* (0-1 / 1024) |
+
+\* Percent value (0-1), can be converted by dividing by nominal PSU current (~35 for R4830, ~53 for R4850)  
+\*\* ready: PSU is ready to output voltage/power (AC input available, not faulted, ...)  
+\*\*\* active: device is outputting voltage/power (not booting, not standby, ...)  
