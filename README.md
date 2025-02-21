@@ -63,12 +63,16 @@ This information was put together from several sources, such as:
 - https://github.com/577fkj/PowerControl/blob/c6d06935af79fcdbf3e71d1ad7ea4a86cd0c756f/main/src/protocol/huawei_r48xx.c
 - https://max.book118.com/html/2022/0414/5230000111004213.shtm
     - see `docs/`
+- https://tieba.baidu.com/p/7475319470
 
 ### General
 
 The CAN interface uses 125kbps rate with extended 29-bit identifiers.
 
-The CAN message IDs do not specify a single value/register. Instead, the message ID is used as an address, function code, message direction and possibly more.
+### CAN ID
+
+The CAN message IDs do not specify a single value/register.
+Instead, the message ID is used as an address, function code, message direction, etc..
 
 Examples:
 - `108040FE`
@@ -85,20 +89,27 @@ Interpretation:
 Bits: `000a aaaa abbb bbbb cccc cccc deee eefg`
 - 0 (bit 31-29): always zero (CAN ID is 29-bit)
 - a (bit 28-23): protocol ID (always `21`)
-- b (bit 22-16): address (0 = broadcast, 1 = first, ... - PSU IDs somehow get auto-assigned via bus)
+- b (bit 22-16): address (0 = broadcast, 1 = first, ...)
 - c (bit 15-8): command id
 - d (bit 7): message source (0 = from PSU, 1 = to PSU)
 - e (bit 6-2): group mask (always `1F`)
 - f (bit 1): hardware / software address (0 = hw, 1 = sw, always 1)
 - g (bit 0): finished marker (0 = finished, 1 = more data coming)
 
-There are several known commands and responses:
+Apparently the PSU can have a "hardware address" and "software address"
+but even the original "SMU02B" controller seems to use only the software address.
+
+The "software address" seems to be negotiated automatically if multiple PSUs are on one CAN bus (starting at 1).
+
+The "hardware address" might be fixed per slot, because the original PSU rack has a network of resistors
+and dip switches on the two "slot detect" pins of the connector. Possibly, this allows the PSU to know
+which slot it is in, which might set the PSU "hardware address", but I haven't tested this.
 
 ### `40` Data Request
 Example (to PSU):
 `108140FE: 00 00 00 00 00 00 00 00`
 
-Requests a status response composed of multiple messages.
+Requests a data response composed of multiple messages.
 
 ### `40` Data Reponse
 Example (from PSU):
@@ -275,6 +286,8 @@ Example (from PSU):
 ```
 
 Both `1001117E` (`00 01`) and `108111FE` (`00 03`) sent every 377ms without request.
+
+Due to the message direction (to PSU) in one of the messages I think this might also be used for PSU address negotiation.
 
 Data bytes:
 - Byte 0-2: register id (?)
