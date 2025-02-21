@@ -226,7 +226,7 @@ Registers:
 | `01 02`     | `00 00 xx xx xx xx` |                                                                                          | Overvoltage protection? (V * 1024)                                         |
 | `01 03`     | `00 00 xx xx xx xx` | 3.5A / 35A (for R4830)<br>= 10% = 0.1 * 1024 ≈ 0x00000066<br>= `01 03 00 00 00 00 00 66` | Online current limit\* (0-1 * 1024)                                        |
 | `01 04`     | `00 00 xx xx xx xx` |                                                                                          | Offline current limit\* (0-1 * 1024)                                       |
-| `01 09`     | `00 xx yy yy yy yy` |                                                                                          | Input/AC current limit<br>`xx` = limit active<br>`yy` = current (A * 1024) |
+| `01 09`     | `00 xx yy yy yy yy` | 4A * 1024 = 0x00001000<br>= `01 09 00 01 00 00 10 00`<br> (active bit set)               | Input/AC current limit<br>`xx` = limit active<br>`yy` = current (A * 1024) |
 | `01 14`     | `xx xx 00 00 00 00` | 50% = 0.5 * 25600 = 12800<br>= `01 14 32 00 00 00 00 00`                                 | Fan duty cycle (0-1 * 25600)                                               |
 | `01 18`     | `00 00 xx xx xx xx` | 60s = `01 18 00 00 00 00 00 3C`                                                          | CAN timeout seconds (5-60)                                                 |
 | `01 32`     | `00 xx 00 00 00 00` |                                                                                          | Standby<br>`00` = PSU on<br>`01` = standby                                 |
