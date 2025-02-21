@@ -219,18 +219,18 @@ Data bytes:
 - Byte 2-7: data
 
 Registers:
-| register id | data                | example                                                                               | description                                                            |
-| ----------- | ------------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `01 00`     | `00 00 xx xx xx xx` | 53.5V * 1024<br>= 0x0000D600= `01 00 00 00 00 00 D6 00`                               | Online output voltage (V * 1024)                                       |
-| `01 01`     | `00 00 xx xx xx xx` |                                                                                       | Offline output voltage (V * 1024)                                      |
-| `01 02`     | `00 00 xx xx xx xx` |                                                                                       | Overvoltage protection? (V * 1024)                                     |
-| `01 03`     | `00 00 xx xx xx xx` | 3.5A / 35A (for R4830) = 10% = 0.1 * 1024<br>≈ 0x00000066 = `01 03 00 00 00 00 00 66` | Online current limit\* (0-1 * 1024)                                    |
-| `01 04`     | `00 00 xx xx xx xx` |                                                                                       | Offline current limit\* (0-1 * 1024)                                   |
-| `01 09`     | `00 xx yy yy yy yy` |                                                                                       | `xx` = limit active<br>yy = input current limit (A * 1024)             |
-| `01 14`     | `xx xx 00 00 00 00` | 50% = 0.5 * 25600<br>= 12800 = `01 14 32 00 00 00 00 00`                              | Fan duty cycle (0-1 * 25600)                                           |
-| `01 18`     | `00 00 xx xx xx xx` | 60s = `01 18 00 00 00 00 00 3C`                                                       | CAN timeout seconds (5-60)                                             |
-| `01 32`     | `00 xx 00 00 00 00` |                                                                                       | Standby (0 = PSU on, 1 = standby)                                      |
-| `01 34`     | `00 xx 00 00 00 00` |                                                                                       | Fan mode<br>`00` = auto<br>`01` = max (online)<br>`02` = max (offline) |
+| register id | data                | example                                                                                  | description                                                                |
+| ----------- | ------------------- | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `01 00`     | `00 00 xx xx xx xx` | 53.5V * 1024 = 0x0000D600<br>= `01 00 00 00 00 00 D6 00`                                 | Online output voltage (V * 1024)                                           |
+| `01 01`     | `00 00 xx xx xx xx` |                                                                                          | Offline output voltage (V * 1024)                                          |
+| `01 02`     | `00 00 xx xx xx xx` |                                                                                          | Overvoltage protection? (V * 1024)                                         |
+| `01 03`     | `00 00 xx xx xx xx` | 3.5A / 35A (for R4830)<br>= 10% = 0.1 * 1024 ≈ 0x00000066<br>= `01 03 00 00 00 00 00 66` | Online current limit\* (0-1 * 1024)                                        |
+| `01 04`     | `00 00 xx xx xx xx` |                                                                                          | Offline current limit\* (0-1 * 1024)                                       |
+| `01 09`     | `00 xx yy yy yy yy` |                                                                                          | Input/AC current limit<br>`xx` = limit active<br>`yy` = current (A * 1024) |
+| `01 14`     | `xx xx 00 00 00 00` | 50% = 0.5 * 25600 = 12800<br>= `01 14 32 00 00 00 00 00`                                 | Fan duty cycle (0-1 * 25600)                                               |
+| `01 18`     | `00 00 xx xx xx xx` | 60s = `01 18 00 00 00 00 00 3C`                                                          | CAN timeout seconds (5-60)                                                 |
+| `01 32`     | `00 xx 00 00 00 00` |                                                                                          | Standby<br>`00` = PSU on<br>`01` = standby                                 |
+| `01 34`     | `00 xx 00 00 00 00` |                                                                                          | Fan mode<br>`00` = auto<br>`01` = max (online)<br>`02` = max (offline)     |
 
 \* Percent value (0-1), can be converted by dividing by nominal PSU current (~35 for R4830, ~53 for R4850)  
 
@@ -263,7 +263,7 @@ Data bytes:
 Registers (in addition to ones from `40` data response);
 | register id | data                | example                                                  | description                                                                |
 | ----------- | ------------------- | -------------------------------------------------------- | -------------------------------------------------------------------------- |
-| `01 87`     | `xx xx yy yy zz zz` | `01 87 2D 00 64 00 4B 87` = calc 45%, set 100%, 19335RPM | `xx` = calculated\* duty cycle(?), `yy` = duty cycle (/ 25600), `zz` = RPM |
+| `01 87`     | `xx xx yy yy zz zz` | `01 87 2D 00 64 00 4B 87` = calc 45%, set 100%, 19335RPM | `xx` = calculated\* duty cycle(?)<br>`yy` = duty cycle (/ 25600)<br>`zz` = RPM |
 
 \* possibly the duty cycle the PSU requests to be set based on the temperature
 
@@ -271,7 +271,7 @@ Registers (in addition to ones from `40` data response);
 Example (from PSU):
 ```
 1001117E: 00 01 00 00 00 00 04 00
-108111FE: 00 03 00 00 00 01 04 00
+108111FE: 00 03 00 00 00 01 00 00
 ```
 
 Both `1001117E` (`00 01`) and `108111FE` (`00 03`) sent every 377ms without request.
@@ -280,10 +280,10 @@ Data bytes:
 - Byte 0-2: register id (?)
 - Bytes 2-7: register values (?)
 
-| register id | data                | example                                       | description                                                                                   |
-| ----------- | ------------------- | --------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| `00 01`     | `?? xx ?? ?? yy yy` | `00 01 00 00 00 00 04 00` = ready, 100% load  | `xx` = ready\*\* status (`00` = ready, `01` = not ready)<br>`yy` = Output current\* (0-1 / 1024)    |
-| `00 03`     | `?? ?? ?? xx yy yy` | `00 03 00 00 00 01 00 00` = active, 100% load | `xx` = active\*\*\* status (`00` = not active, `01` = active)<br>`yy` = Output current\* (0-1 / 1024) |
+| register id | data                | example                                         | description                                                                                           |
+| ----------- | ------------------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `00 01`     | `?? xx ?? ?? yy yy` | `00 01 00 00 00 00 04 00`<br>= ready, 100% load | `xx` = ready\*\* status (`00` = ready, `01` = not ready)<br>`yy` = Output current\* (0-1 / 1024)      |
+| `00 03`     | `?? ?? ?? xx yy yy` | `00 03 00 00 00 01 00 00`<br>= active, 0% load  | `xx` = active\*\*\* status (`00` = not active, `01` = active)<br>`yy` = Output current\* (0-1 / 1024) |
 
 \* Percent value (0-1), can be converted by dividing by nominal PSU current (~35 for R4830, ~53 for R4850)  
 \*\* ready: PSU is ready to output voltage/power (AC input available, not faulted, ...)  
