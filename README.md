@@ -74,16 +74,7 @@ The CAN interface uses 125kbps rate with extended 29-bit identifiers.
 The CAN message IDs do not specify a single value/register.
 Instead, the message ID is used as an address, function code, message direction, etc..
 
-Examples:
-- `108040FE`
-- `1081407F`
-- `108180FE`
-- `1081807E`
-- `100111FE`
-- `1001117E`
-- `1081D27F`
-- `108250FE`
-- `128250FE`
+Example: `1081407F`
 
 Interpretation:  
 Bits: `000a aaaa abbb bbbb cccc cccc deee eefg`
@@ -131,9 +122,9 @@ Example (from PSU):
 ```
 
 Data bytes:
-- byte 0-1: register id
-- bytes 2-3: ? (always 0)
-- bytes 4-7: int32 value
+- Byte 0-1: register id
+- Bytes 2-3: ? (always 0)
+- Bytes 4-7: int32 value
 
 Register values:
 | register id | example                         | description                                      |
@@ -170,8 +161,8 @@ Example (from PSU):
 ```
 
 Data bytes:
-- byte 0-1: register id
-- bytes 2-7: data
+- Byte 0-1: register id
+- Bytes 2-7: data
 
 Registers:
 | register id | data                | example                                                                      | description                                                             |
@@ -201,8 +192,8 @@ Example (from PSU):
 1081D27E: 00 36 4D 3D 0D 0A 00 00
 ```
 
-Byte 0-1: Message part number
-Bytes 2-7: ASCII Data (null-terminated)
+- Byte 0-1: Message part number
+- Bytes 2-7: ASCII Data (null-terminated)
 
 Decodes to:
 ```
@@ -272,8 +263,8 @@ Data bytes:
 - Byte 2-7: register value
 
 Registers (in addition to ones from `40` data response);
-| register id | data                | example                                                  | description                                                                |
-| ----------- | ------------------- | -------------------------------------------------------- | -------------------------------------------------------------------------- |
+| register id | data                | example                                                  | description                                                                    |
+| ----------- | ------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------ |
 | `01 87`     | `xx xx yy yy zz zz` | `01 87 2D 00 64 00 4B 87` = calc 45%, set 100%, 19335RPM | `xx` = calculated\* duty cycle(?)<br>`yy` = duty cycle (/ 25600)<br>`zz` = RPM |
 
 \* possibly the duty cycle the PSU requests to be set based on the temperature
