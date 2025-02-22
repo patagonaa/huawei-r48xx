@@ -51,6 +51,52 @@ Fits at least R4850G2
 ### [PHZ-F020304-BW00x](./connectors/PHZ-F020304-BW001/PHZ-F020304-BW00X系列连接器（85A\).docx)
 My R4830S1 came with one, so it does definitely fit that.
 
+## Connections
+
+looking at the connector at the back of the PSU, the connections (left to right are):
+
+- DC negative (not earth referenced)
+- (DC Pre-charge)
+    - connected to DC negative internally
+    - likely used to pre-charge internal capacitors via a resistor when plugging in module with battery voltage present
+- DC positive (not earth referenced)
+- Slot detect (top/bottom)
+    - can both be pulled to DC negative to enable PSU
+    - resistor signaling used for addressing PSU by its slot
+- CAN (top/bottom)
+    - top = CAN_L
+    - bottom = CAN_H
+- PE
+- N
+- L
+
+## Additional Notes
+
+### Output capacitors
+The PSU output capacitors are **large**.
+If you connect the unpowered PSU up to a battery, there _will_ be sparks.
+To avoid this, the PSU should either be on already or a pre-charge resistor (possibly the internal one?) should be used.
+
+### CAN communication power
+The CAN communication is powered by the DC side.
+This means CAN communication is always possible when there is a battery connected, even if there is no AC input present.    
+
+### Default values
+For some values (mostly voltage and current) there is a "default" value (which is saved in non-volatile memory)
+in addition to the "running" value.  
+This means, the voltage/current will be reset to these default settings after power loss
+or CAN communication loss (after ~60s timeout, shown by flashing yellow light on front panel)
+and has to be set again once CAN communication is (re-)established.
+
+Default voltage range seems to be 48 to 58.5 volts, while the normal range seems to be 41.5 to 58.5 volts.
+
+### Fan control
+The default fan control method lets the module run _really_ hot (>80°C at full load).
+
+There are CAN commands to either set the fan mode (auto / full speed) or to set the fan duty cycle (0-100%).  
+If running at anywhere near full power (>50% maybe) the fan speed should either be set to 100% or temperature
+controlled via the duty cycle (if noise matters).
+
 ## CAN protocol
 
 This information was put together from several sources, such as:
@@ -142,6 +188,7 @@ Register values:
 | `01 80`     | `00 00 00 00 6C 00` = 27°C      | Input Temperature ( / 1024 = °C)                 |
 | `01 81`     | `00 00 00 00 8C 11` = 35.02A    | Output Current 1 (fast/unfiltered) ( / 1024 = A) |
 | `01 82`     | `00 00 00 00 8C 07` = 35.01A    | Output Current 2 (slow/filtered) ( / 1024 = A)   |
+| `01 83`     | `00 00 10 00 00 00` = ?         | Alarm/Status bits                                |
 
 \* Percent value (0-1), can be converted by dividing by nominal PSU current (~35 for R4830, ~53 for R4850).
 The actual output current limit as determined by AC and output current limits (this number gets lower when AC limit is set)
@@ -221,17 +268,17 @@ Data bytes:
 - Byte 2-7: data
 
 Registers:
-| register id | data                | example                                                                                  | description                                                                                            |
-| ----------- | ------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `01 00`     | `00 00 xx xx xx xx` | 53.5V * 1024 = 0x0000D600<br>= `01 00 00 00 00 00 D6 00`                                 | Online output voltage (V * 1024)                                                                       |
-| `01 01`     | `00 00 xx xx xx xx` |                                                                                          | Offline output voltage (V * 1024)                                                                      |
-| `01 02`     | `00 00 xx xx xx xx` |                                                                                          | Overvoltage protection? (V * 1024)                                                                     |
-| `01 03`     | `00 00 xx xx xx xx` | 3.5A / 35A (for R4830)<br>= 10% = 0.1 * 1024 ≈ 0x00000066<br>= `01 03 00 00 00 00 00 66` | Online current limit\* (0-1 * 1024)                                                                    |
-| `01 04`     | `00 00 xx xx xx xx` |                                                                                          | Offline current limit\* (0-1 * 1024)                                                                   |
-| `01 09`     | `00 xx yy yy yy yy` | 4A * 1024 = 0x00001000<br>= `01 09 00 01 00 00 10 00`<br> (active bit set)               | Input/AC current limit<br>(applies offline+online)<br>`xx` = limit active<br>`yy` = current (A * 1024) |
-| `01 14`     | `xx xx 00 00 00 00` | 50% = 0.5 * 25600 = 12800<br>= `01 14 32 00 00 00 00 00`                                 | Fan duty cycle (0-1 * 25600)                                                                           |
-| `01 32`     | `00 xx 00 00 00 00` |                                                                                          | Standby<br>`00` = PSU on<br>`01` = standby                                                             |
-| `01 34`     | `00 xx 00 00 00 00` |                                                                                          | Fan mode<br>`00` = auto<br>`01` = max (online)<br>`02` = max (offline)                                 |
+| register id | data                | example                                                                                  | description                                                                                |
+| ----------- | ------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `01 00`     | `00 00 xx xx xx xx` | 53.5V * 1024 = 0x0000D600<br>= `01 00 00 00 00 00 D6 00`                                 | Output voltage (V * 1024)                                                                  |
+| `01 01`     | `00 00 xx xx xx xx` |                                                                                          | Default output voltage (V * 1024)                                                          |
+| `01 02`     | `00 00 xx xx xx xx` |                                                                                          | Overvoltage protection? (V * 1024)                                                         |
+| `01 03`     | `00 00 xx xx xx xx` | 3.5A / 35A (for R4830)<br>= 10% = 0.1 * 1024 ≈ 0x00000066<br>= `01 03 00 00 00 00 00 66` | Current limit\* (0-1 * 1024)                                                               |
+| `01 04`     | `00 00 xx xx xx xx` |                                                                                          | Default current limit\* (0-1 * 1024)                                                       |
+| `01 09`     | `00 xx yy yy yy yy` | 4A * 1024 = 0x00001000<br>= `01 09 00 01 00 00 10 00`<br> (active bit set)               | Input/AC current limit<br>(persistent)<br>`xx` = limit active<br>`yy` = current (A * 1024) |
+| `01 14`     | `xx xx 00 00 00 00` | 50% = 0.5 * 25600 = 12800<br>= `01 14 32 00 00 00 00 00`                                 | Fan duty cycle (0-1 * 25600)                                                               |
+| `01 32`     | `00 xx 00 00 00 00` |                                                                                          | Standby<br>`00` = PSU on<br>`01` = standby                                                 |
+| `01 34`     | `00 xx 00 00 00 00` |                                                                                          | Fan mode<br>`00` = auto<br>`01` = max<br>`02` = max (persistent)                           |
 
 \* Percent value (0-1), can be converted by dividing by nominal PSU current (~35 for R4830, ~53 for R4850)  
 
