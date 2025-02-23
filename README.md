@@ -64,8 +64,8 @@ looking at the connector at the back of the PSU, the connections (left to right 
     - can both be pulled to DC negative to enable PSU
     - resistor signaling used for addressing PSU by its slot
 - CAN (top/bottom)
-    - top = CAN_L
-    - bottom = CAN_H
+    - top/white = CAN_L
+    - bottom/black = CAN_H
 - PE
 - N
 - L
@@ -88,10 +88,41 @@ This means, the voltage/current will be reset to these default settings after po
 or CAN communication loss (after ~60s timeout, shown by flashing yellow light on front panel)
 and has to be set again once CAN communication is (re-)established.
 
-Default voltage range seems to be 48 to 58.5 volts, while the normal range seems to be 41.5 to 58.5 volts.
+### Value ranges
+
+Most CAN values have a multiplier of 1024 (50V * 1024 = 51200 = 0xC800).  
+When setting parameters, the PSU reports an error when the value exceeds the valid range.
+
+Valid ranges (tested with R4830S1)
+- Voltage: 41.0V (`A4 00`) to 58.6V (`EA 67`)
+- Default Voltage: 48.0V (`C0 00`) to 58.4V (`E9 9A`)
+- Current: 0% (`00 00`) to 100% (`04 E2`)
+    - Weirdly enough, this value goes up to 1250 instead of 1024, but 1250 coincides
+      pretty well with the maximum current from the datasheet.  
+
+### Output current limit
+
+The output current limit is set and read as a ratio of the maximum possible output current.  
+For the R4830S1, this means 1250 ≈ 42.6A, for the R4850G6 1250 ≈ 63.3A
+(both compared to the PSU's internal current measurment).
+
+This means, to set a current limit of 10A for the R4830S1, the value to set is: 10A / 42.6A * 1250 ≈ 293 = `00 00 01 25`.
+
+The max output current readout (register `01 76`) is not necessarily the limit that has been _set_,
+but rather what the PSU is currently set to _and capable of outputting_.
+This includes the output current limit (of course), but also the AC current limit and possibly also the AC voltage and DC voltage.  
+Examples (R4850G6):
+| DC current limit | AC current limit | AC voltage | DC voltage | Result             | Limited by   |
+| ---------------- | ---------------- | ---------- | ---------- | ------------------ | ------------ |
+| 100%             | off              | 230V       | 49.5V      | 96% (60.9 / 63.3A) | PSU capacity |
+| 50%              | off              | 230V       | 49.5V      | 50% (31.7 / 63.3A) | DC limit     |
+| 100%             | 2A               | 230V       | 49.5V      | 14% (9.0 / 63.3A)  | AC limit     |
 
 ### Fan control
-The default fan control method lets the module run _really_ hot (>80°C at full load).
+The PSU's internal fan control method uses the _input/ambient temperature_ to determine the fan speed.
+This means, even when under heavy load, the fan speed increases only marginally because the 
+internal/PCB temperature doesn't really affect the input/ambient temperature sensor.  
+This lets the PSU run _really_ hot (>80°C at full load).
 
 There are CAN commands to either set the fan mode (auto / full speed) or to set the fan duty cycle (0-100%).  
 If running at anywhere near full power (>50% maybe) the fan speed should either be set to 100% or temperature
@@ -182,7 +213,7 @@ Register values:
 | `01 73`     | `00 00 00 1C 20 9A` = 1800W     | Output Power ( / 1024 = W)                       |
 | `01 74`     | `00 00 00 00 03 E6` = 97%       | Efficiency ( / 1024 = 0-1)                       |
 | `01 75`     | `00 00 00 00 CD B1` = 51.4V     | Output Voltage ( / 1024 = V)                     |
-| `01 76`     | `00 00 00 00 04 00` = 100%      | Output Current Setpoint\* ( / 1024 = 0-1)        |
+| `01 76`     | `00 00 00 00 04 00` = 100%      | Max Output Current\* ( / 1250 = 0-1)             |
 | `01 78`     | `00 00 00 03 8B 80` = 226.8V    | Input Voltage ( / 1024 = V)                      |
 | `01 7F`     | `00 00 00 00 84 00` = 33°C      | Output Temperature ( / 1024 = °C)                |
 | `01 80`     | `00 00 00 00 6C 00` = 27°C      | Input Temperature ( / 1024 = °C)                 |
@@ -190,8 +221,7 @@ Register values:
 | `01 82`     | `00 00 00 00 8C 07` = 35.01A    | Output Current 2 (slow/filtered) ( / 1024 = A)   |
 | `01 83`     | `00 00 10 00 00 00` = ?         | Alarm/Status bits                                |
 
-\* Percent value (0-1), can be converted by dividing by nominal PSU current (~35 for R4830, ~53 for R4850).
-The actual output current limit as determined by AC and output current limits (this number gets lower when AC limit is set)
+\* See [Output current limit](#output-current-limit)
 
 ### `50` Info Request
 Example (to PSU): `108150FE: 00 00 00 00 00 00 00 00`
@@ -268,19 +298,19 @@ Data bytes:
 - Byte 2-7: data
 
 Registers:
-| register id | data                | example                                                                                  | description                                                                                |
-| ----------- | ------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `01 00`     | `00 00 xx xx xx xx` | 53.5V * 1024 = 0x0000D600<br>= `01 00 00 00 00 00 D6 00`                                 | Output voltage (V * 1024)                                                                  |
-| `01 01`     | `00 00 xx xx xx xx` |                                                                                          | Default output voltage (V * 1024)                                                          |
-| `01 02`     | `00 00 xx xx xx xx` |                                                                                          | Overvoltage protection? (V * 1024)                                                         |
-| `01 03`     | `00 00 xx xx xx xx` | 3.5A / 35A (for R4830)<br>= 10% = 0.1 * 1024 ≈ 0x00000066<br>= `01 03 00 00 00 00 00 66` | Current limit\* (0-1 * 1024)                                                               |
-| `01 04`     | `00 00 xx xx xx xx` |                                                                                          | Default current limit\* (0-1 * 1024)                                                       |
-| `01 09`     | `00 xx yy yy yy yy` | 4A * 1024 = 0x00001000<br>= `01 09 00 01 00 00 10 00`<br> (active bit set)               | Input/AC current limit<br>(persistent)<br>`xx` = limit active<br>`yy` = current (A * 1024) |
-| `01 14`     | `xx xx 00 00 00 00` | 50% = 0.5 * 25600 = 12800<br>= `01 14 32 00 00 00 00 00`                                 | Fan duty cycle (0-1 * 25600)                                                               |
-| `01 32`     | `00 xx 00 00 00 00` |                                                                                          | Standby<br>`00` = PSU on<br>`01` = standby                                                 |
-| `01 34`     | `00 xx 00 00 00 00` |                                                                                          | Fan mode<br>`00` = auto<br>`01` = max<br>`02` = max (persistent)                           |
+| register id | data                | example                                                                          | description                                                                                |
+| ----------- | ------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `01 00`     | `00 00 xx xx xx xx` | 53.5V * 1024 = 0x0000D600<br>= `01 00 00 00 00 00 D6 00`                         | Output voltage (V * 1024)                                                                  |
+| `01 01`     | `00 00 xx xx xx xx` |                                                                                  | Default output voltage (V * 1024)                                                          |
+| `01 02`     | `00 00 xx xx xx xx` |                                                                                  | Overvoltage protection? (V * 1024)                                                         |
+| `01 03`     | `00 00 xx xx xx xx` | 10A / 42.6A (for R4830S1) * 1250<br>≈ 293 = 0x125<br>= `01 03 00 00 00 00 01 25` | Current limit\* (0-1 * 1250)                                                               |
+| `01 04`     | `00 00 xx xx xx xx` |                                                                                  | Default current limit\* (0-1 * 1250)                                                       |
+| `01 09`     | `00 xx yy yy yy yy` | 4A * 1024 = 0x00001000<br>= `01 09 00 01 00 00 10 00`<br> (active bit set)       | Input/AC current limit<br>(persistent)<br>`xx` = limit active<br>`yy` = current (A * 1024) |
+| `01 14`     | `xx xx 00 00 00 00` | 50% = 0.5 * 25600 = 12800<br>= `01 14 32 00 00 00 00 00`                         | Fan duty cycle (0-1 * 25600)                                                               |
+| `01 32`     | `00 xx 00 00 00 00` |                                                                                  | Standby<br>`00` = PSU on<br>`01` = standby                                                 |
+| `01 34`     | `00 xx 00 00 00 00` |                                                                                  | Fan mode<br>`00` = auto<br>`01` = max<br>`02` = max (persistent)                           |
 
-\* Percent value (0-1), can be converted by dividing by nominal PSU current (~35 for R4830, ~53 for R4850)  
+\* See [Output current limit](#output-current-limit)
 
 ### `80` Register Set Response
 Example (from PSU): `1081807E: 01 34 00 01 00 00 00 00`
@@ -309,32 +339,37 @@ Data bytes:
 - Byte 2-7: register value
 
 Registers (in addition to ones from `40` data response);
-| register id | data                | example                                                  | description                                                                    |
-| ----------- | ------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| `01 87`     | `xx xx yy yy zz zz` | `01 87 2D 00 64 00 4B 87` = calc 45%, set 100%, 19335RPM | `xx` = calculated\* duty cycle(?)<br>`yy` = duty cycle (/ 25600)<br>`zz` = RPM |
+| register id | data                | example                                                                | description                                                                            |
+| ----------- | ------------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `01 87`     | `xx xx yy yy zz zz` | `01 87 2D 00 64 00 4B 87` =<br>duty 1 45%<br>duty set 100%<br>19335RPM | `xx` = duty cycle 1\* (/25600)<br>`yy` = duty cycle target\*\* (/ 25600)<br>`zz` = RPM |
 
-\* possibly the duty cycle the PSU requests to be set based on the temperature
+\*   On the R4850G6, the duty cycle 1 is always the min. duty cycle based on the current temperature (see [Fan control](#fan-control)).
+     On the R4830S1, the duty cycle 1 is always equal to the duty cycle target.  
+\*\* On both PSUs, the duty cycle target is the greater of both the temperature-based duty cycle and the duty cycle set via CAN.
+
 
 ### `11` Current (Unsolicited)
 Example (from PSU):
 ```
-1001117E: 00 01 00 00 00 00 04 00
+1001117E: 00 01 00 00 00 00 04 97
 108111FE: 00 03 00 00 00 01 00 00
 ```
 
 Both `1001117E` (`00 01`) and `108111FE` (`00 03`) sent every 377ms without request.
 
-Due to the message direction (to PSU) in one of the messages I think this might also be used for PSU address negotiation.
+Due to the message direction (to PSU) in one of the messages I think this might also be used for PSU address negotiation.  
+Also, due to the load/current being included, I think this might be used to automatically share the load
+between multiple PSUs connected to the same CAN bus.
 
 Data bytes:
 - Byte 0-2: register id (?)
 - Bytes 2-7: register values (?)
 
-| register id | data                | example                                         | description                                                                                           |
-| ----------- | ------------------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `00 01`     | `?? xx ?? ?? yy yy` | `00 01 00 00 00 00 04 00`<br>= ready, 100% load | `xx` = ready\*\* status (`00` = ready, `01` = not ready)<br>`yy` = Output current\* (0-1 / 1024)      |
-| `00 03`     | `?? ?? ?? xx yy yy` | `00 03 00 00 00 01 00 00`<br>= active, 0% load  | `xx` = active\*\*\* status (`00` = not active, `01` = active)<br>`yy` = Output current\* (0-1 / 1024) |
+| register id | data                | example                                        | description                                                                                                  |
+| ----------- | ------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `00 01`     | `?? xx ?? ?? yy yy` | `00 01 00 00 00 00 04 97`<br>= ready, 94% load | `xx` = ready\*\* status (`00` = ready, `01` = not ready)<br>`yy` = Output load\* (fast)  ( / 1250 = 0-1)     |
+| `00 03`     | `?? ?? ?? xx yy yy` | `00 03 00 00 00 01 00 00`<br>= active, 0% load | `xx` = active\*\*\* status (`00` = not active, `01` = active)<br>`yy` = Output load\* (slow) ( / 1250 = 0-1) |
 
-\* Percent value (0-1), can be converted by dividing by nominal PSU current (~35 for R4830, ~53 for R4850)  
+\* See [Output current limit](#output-current-limit)  
 \*\* ready: PSU is ready to output voltage/power (AC input available, not faulted, ...)  
 \*\*\* active: device is outputting voltage/power (not booting, not standby, ...)  
