@@ -93,12 +93,15 @@ and has to be set again once CAN communication is (re-)established.
 Most CAN values have a multiplier of 1024 (50V * 1024 = 51200 = 0xC800).  
 When setting parameters, the PSU reports an error when the value exceeds the valid range.
 
-Valid ranges (tested with R4830S1)
+Valid ranges (tested with R4830S1 and R4850G6)
 - Voltage: 41.0V (`A4 00`) to 58.6V (`EA 67`)
 - Default Voltage: 48.0V (`C0 00`) to 58.4V (`E9 9A`)
 - Current: 0% (`00 00`) to 100% (`04 E2`)
     - Weirdly enough, this value goes up to 1250 instead of 1024, but 1250 coincides
-      pretty well with the maximum current from the datasheet.  
+      pretty well with the maximum current from the graph in the datasheet.  
+- Fan duty cycle:
+    - R4830S1: can be set to auto (`00 00`) or between 30% (`1E 00`) and 100% (`64 00`)
+    - R4850G6: can be set to auto (`00 00`) or between [min. duty cycle](#82-register-get-response) (temperature dependent) and 100% (`64 00`)
 
 ### Output current limit
 
@@ -124,7 +127,7 @@ This means, even when under heavy load, the fan speed increases only marginally 
 internal/PCB temperature doesn't really affect the input/ambient temperature sensor.  
 This lets the PSU run _really_ hot (>80°C at full load).
 
-There are CAN commands to either set the fan mode (auto / full speed) or to set the fan duty cycle (0-100%).  
+There are CAN commands to set the fan mode (auto / full speed) and to set the fan duty cycle (0-100%).  
 If running at anywhere near full power (>50% maybe) the fan speed should either be set to 100% or temperature
 controlled via the duty cycle (if noise matters).
 
@@ -306,11 +309,12 @@ Registers:
 | `01 03`     | `00 00 xx xx xx xx` | 10A / 42.6A (for R4830S1) * 1250<br>≈ 293 = 0x125<br>= `01 03 00 00 00 00 01 25` | Current limit\* (0-1 * 1250)                                                               |
 | `01 04`     | `00 00 xx xx xx xx` |                                                                                  | Default current limit\* (0-1 * 1250)                                                       |
 | `01 09`     | `00 xx yy yy yy yy` | 4A * 1024 = 0x00001000<br>= `01 09 00 01 00 00 10 00`<br> (active bit set)       | Input/AC current limit<br>(persistent)<br>`xx` = limit active<br>`yy` = current (A * 1024) |
-| `01 14`     | `xx xx 00 00 00 00` | 50% = 0.5 * 25600 = 12800<br>= `01 14 32 00 00 00 00 00`                         | Fan duty cycle (0-1 * 25600)                                                               |
+| `01 14`     | `xx xx 00 00 00 00` | 50% = 0.5 * 25600 = 12800<br>= `01 14 32 00 00 00 00 00`                         | Fan duty cycle\*\* (0-1 * 25600)                                                           |
 | `01 32`     | `00 xx 00 00 00 00` |                                                                                  | Standby<br>`00` = PSU on<br>`01` = standby                                                 |
 | `01 34`     | `00 xx 00 00 00 00` |                                                                                  | Fan mode<br>`00` = auto<br>`01` = max<br>`02` = max (persistent)                           |
 
-\* See [Output current limit](#output-current-limit)
+\* See [Output current limit](#output-current-limit)  
+\*\* Can not be set to any value on any PSU (see [Value ranges](#value-ranges)) (other values return an error and reset the internal value to 0 (auto)).
 
 ### `80` Register Set Response
 Example (from PSU): `1081807E: 01 34 00 01 00 00 00 00`
@@ -339,9 +343,9 @@ Data bytes:
 - Byte 2-7: register value
 
 Registers (in addition to ones from `40` data response);
-| register id | data                | example                                                                | description                                                                            |
-| ----------- | ------------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| `01 87`     | `xx xx yy yy zz zz` | `01 87 2D 00 64 00 4B 87` =<br>duty 1 45%<br>duty set 100%<br>19335RPM | `xx` = duty cycle 1\* (/25600)<br>`yy` = duty cycle target\*\* (/ 25600)<br>`zz` = RPM |
+| register id | data                | example                                                                | description                                                                                                  |
+| ----------- | ------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `01 87`     | `xx xx yy yy zz zz` | `01 87 2D 00 64 00 4B 87` =<br>duty 1 45%<br>duty set 100%<br>19335RPM | Fan control/status<br>`xx` = duty cycle 1\* (/25600)<br>`yy` = duty cycle target\*\* (/ 25600)<br>`zz` = RPM |
 
 \*   On the R4850G6, the duty cycle 1 is always the min. duty cycle based on the current temperature (see [Fan control](#fan-control)).
      On the R4830S1, the duty cycle 1 is always equal to the duty cycle target.  
