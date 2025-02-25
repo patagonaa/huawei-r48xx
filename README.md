@@ -280,7 +280,9 @@ Registers:
 | `01 34`     | `00 xx 00 00 00 00` |                                                                                  | Fan mode<br>`00` = auto<br>`01` = max<br>`02` = max (persistent)                           |
 
 \* See [Output current limit](#output-current-limit)  
-\*\* Can not be set to any value on any PSU (see [Value ranges](#value-ranges)) (other values return an error and reset the internal value to 0 (auto)).
+\*\* Can only be set to 0 or above the min. duty cycle (see [Register Get Response](#82-register-get-response)). (other values return an error and reset the internal value to 0 (auto)).  
+     On the R4850G6, the min. duty depends on the temperature  
+     On the R4830S1, the min. duty is the current setpoint (which is probably a bug), so the duty cycle can only be increased or set to 0.
 
 ### `80` Register Set Response
 Response to setting a register value.
@@ -316,12 +318,12 @@ Data bytes:
 - Byte 2-7: register value
 
 Registers (in addition to ones from [`40` data response](#40-data-reponse));
-| register id | data                | example                                                                | description                                                                                                  |
-| ----------- | ------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `01 87`     | `xx xx yy yy zz zz` | `01 87 2D 00 64 00 4B 87` =<br>duty 1 45%<br>duty set 100%<br>19335RPM | Fan control/status<br>`xx` = duty cycle 1\* (/25600)<br>`yy` = duty cycle target\*\* (/ 25600)<br>`zz` = RPM |
+| register id | data                | example                                                                   | description                                                                                                     |
+| ----------- | ------------------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `01 87`     | `xx xx yy yy zz zz` | `01 87 2D 00 64 00 4B 87` =<br>min. duty 45%<br>duty set 100%<br>19335RPM | Fan control/status<br>`xx` = min. duty cycle\* (/25600)<br>`yy` = duty cycle target\*\* (/ 25600)<br>`zz` = RPM |
 
-\*   On the R4850G6, the duty cycle 1 is always the min. duty cycle based on the current temperature (see [Fan control](#fan-control)).
-     On the R4830S1, the duty cycle 1 is always equal to the duty cycle target.  
+\*   On the R4850G6, the min. duty cycle is based on the current temperature (see [Fan control](#fan-control)).  
+     On the R4830S1, the min. duty cycle is always equal to the duty cycle target.  
 \*\* On both PSUs, the duty cycle target is the greater of both the temperature-based duty cycle and the duty cycle set via CAN.
 
 
