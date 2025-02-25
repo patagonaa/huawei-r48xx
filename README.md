@@ -70,56 +70,10 @@ looking at the connector at the back of the PSU, the connections (left to right 
 - N
 - L
 
-## Additional Notes
-
 ### Output capacitors
 The PSU output capacitors are **large**.
-If you connect the unpowered PSU up to a battery, there _will_ be sparks.
+If you connect the unpowered PSU up to a battery, **there _will_ be sparks**.
 To avoid this, the PSU should either be on already or a pre-charge resistor (possibly the internal one?) should be used.
-
-### CAN communication power
-The CAN communication is powered by the DC side.
-This means CAN communication is always possible when there is a battery connected, even if there is no AC input present.    
-
-### Default values
-For some values (mostly voltage and current) there is a "default" value (which is saved in non-volatile memory)
-in addition to the "running" value.  
-This means, the voltage/current will be reset to these default settings after power loss
-or CAN communication loss (after ~60s timeout, shown by flashing yellow light on front panel)
-and has to be set again once CAN communication is (re-)established.
-
-### Value ranges
-
-Most CAN values have a multiplier of 1024 (50V * 1024 = 51200 = 0xC800).  
-When setting parameters, the PSU reports an error when the value exceeds the valid range.
-
-Valid ranges (tested with R4830S1 and R4850G6)
-- Voltage: 41.0V (`A4 00`) to 58.6V (`EA 67`)
-- Default Voltage: 48.0V (`C0 00`) to 58.4V (`E9 9A`)
-- Current: 0% (`00 00`) to 100% (`04 E2`)
-    - Weirdly enough, this value goes up to 1250 instead of 1024, but 1250 coincides
-      pretty well with the maximum current from the graph in the datasheet (see [Output current limit](#output-current-limit)).  
-- Fan duty cycle:
-    - R4830S1: can be set to auto (`00 00`) or between 30% (`1E 00`) and 100% (`64 00`)
-    - R4850G6: can be set to auto (`00 00`) or between [min. duty cycle](#82-register-get-response) (temperature dependent) and 100% (`64 00`)
-
-### Output current limit
-
-The output current limit is set and read as a ratio of the maximum possible output current.  
-For the R4830S1, this means 1250 ≈ 42.6A, for the R4850G6 1250 ≈ 63.3A
-(both compared to the PSU's internal current measurment).
-
-This means, to set a current limit of 10A for the R4830S1, the value to set is: 10A / 42.6A * 1250 ≈ 293 = `00 00 01 25`.
-
-The max output current readout (register `01 76`) is not necessarily the limit that has been _set_,
-but rather what the PSU is currently set to _and capable of outputting_.
-This includes the output current limit (of course), but also the AC current limit and possibly also the AC voltage and DC voltage.  
-Examples (R4850G6):
-| DC current limit | AC current limit | AC voltage | DC voltage | Result             | Limited by   |
-| ---------------- | ---------------- | ---------- | ---------- | ------------------ | ------------ |
-| 100%             | off              | 230V       | 49.5V      | 96% (60.9 / 63.3A) | PSU capacity |
-| 50%              | off              | 230V       | 49.5V      | 50% (31.7 / 63.3A) | DC limit     |
-| 100%             | 2A               | 230V       | 49.5V      | 14% (9.0 / 63.3A)  | AC limit     |
 
 ### Fan control
 The PSU's internal fan control method uses the _input/ambient temperature_ to determine the fan speed.
@@ -131,11 +85,24 @@ There are CAN commands to set the fan mode (auto / full speed) and to set the fa
 If running at anywhere near full power (>50% maybe) the fan speed should either be set to 100% or temperature
 controlled via the duty cycle (if noise matters).
 
+
 ## CAN protocol
 
 If you just want to control the PSU without implementing all the commands yourself, you can use my
 fork of an existing ESPHome integration (either directly or as a reference implementation):
 [patagonaa/esphome-huawei-r4850](https://github.com/patagonaa/esphome-huawei-r4850)
+
+The CAN protocol is almost the same between all PSUs of the R48xx-series and apparently (with other protocol IDs)
+is also used in other PSUs (like the R100030G with 1000V 30A, used for EV charging, for which there are docs in `/docs`)
+and possibly even different power electronics products (there are hints pointing at the C28005G1 48V to 280V 5A
+DC-DC converter and MPPT solar chargers).
+
+### Disclaimer
+
+This documentation is a summary of own tests, documentation of other products and a bunch of other peoples'
+implementations and documentation (see [Sources](#sources)).  
+Thus, this is incomplete and possibly not 100% correct. I did, however test and verify almost all of the things
+documented here, with both an R4830S1 and R4850G6, so I'm reasonably sure it _is_ correct.
 
 ### General
 
@@ -209,15 +176,15 @@ Register values:
 | `01 73`     | `00 00 00 1C 20 9A` = 1800W     | Output Power ( / 1024 = W)                       |
 | `01 74`     | `00 00 00 00 03 E6` = 97%       | Efficiency ( / 1024 = 0-1)                       |
 | `01 75`     | `00 00 00 00 CD B1` = 51.4V     | Output Voltage ( / 1024 = V)                     |
-| `01 76`     | `00 00 00 00 04 00` = 100%      | Max Output Current\* ( / 1250 = 0-1)             |
+| `01 76`     | `00 00 00 00 04 00` = 82%       | Max Output Current\* ( / 1250 = 0-1)             |
 | `01 78`     | `00 00 00 03 8B 80` = 226.8V    | Input Voltage ( / 1024 = V)                      |
 | `01 7F`     | `00 00 00 00 84 00` = 33°C      | Output Temperature ( / 1024 = °C)                |
 | `01 80`     | `00 00 00 00 6C 00` = 27°C      | Input Temperature ( / 1024 = °C)                 |
 | `01 81`     | `00 00 00 00 8C 11` = 35.02A    | Output Current 1 (fast/unfiltered) ( / 1024 = A) |
 | `01 82`     | `00 00 00 00 8C 07` = 35.01A    | Output Current 2 (slow/filtered) ( / 1024 = A)   |
-| `01 83`     | `00 00 10 00 00 00` = ?         | Alarm/Status bits                                |
+| `01 83`     | `00 00 10 00 00 00` = ?         | Alarm/Status bits (Details under `docs/`)        |
 
-\* See [Output current limit](#output-current-limit)
+\* Not necessarily the set limit, rather what the PSU is currently _capable of_ outputting, see [Output current limit](#output-current-limit)
 
 ### `50` Info Request
 Requests an info response composed of multiple messages (including one register each).
@@ -396,6 +363,55 @@ Data bytes:
 \*     The value in `00 01` seems to update faster than the one in `00 03`. For calculatung current from this, see [Output current limit](#output-current-limit)  
 \*\*   ready: PSU is ready to output voltage/power (AC input available, not faulted, ...)  
 \*\*\* active: device is outputting voltage/power (not booting, not standby, ...)  
+
+### Additional Notes
+
+#### CAN communication power
+The CAN communication is powered by the DC side.
+This means CAN communication is always possible when there is a battery connected, even if there is no AC input present.    
+
+#### Default values
+For some values (mostly voltage and current) there is a "default" value (which is saved in non-volatile memory)
+in addition to the "running" value.  
+This means, the voltage/current will be reset to these default settings after power loss
+or CAN communication loss (after ~60s timeout, shown by flashing yellow light on front panel)
+and has to be set again once CAN communication is (re-)established.
+
+#### Value ranges
+
+Most CAN values have a multiplier of 1024 (50V * 1024 = 51200 = 0xC800).  
+When setting parameters, the PSU reports an error when the value exceeds the valid range.
+
+Valid ranges (tested with R4830S1 and R4850G6)
+- Voltage: 41.0V (`A4 00`) to 58.6V (`EA 67`)
+- Default Voltage: 48.0V (`C0 00`) to 58.4V (`E9 9A`)
+- Current: 0% (`00 00`) to 100% (`04 E2`)
+    - Weirdly enough, this value goes up to 1250 instead of 1024, but 1250 coincides
+      pretty well with the maximum current from the graph in the datasheet (see [Output current limit](#output-current-limit)).  
+- Fan duty cycle:
+    - R4830S1: can be set to auto (`00 00`) or between 30% (`1E 00`) and 100% (`64 00`)
+    - R4850G6: can be set to auto (`00 00`) or between [min. duty cycle](#82-register-get-response) (temperature dependent) and 100% (`64 00`)
+
+#### Output current limit
+
+The output current limit is set as a ratio of the maximum possible output current.  
+For the R4830S1, this means 1250 ≈ 42.6A, for the R4850G6 1250 ≈ 63.3A
+(both compared to the PSU's internal current measurment).
+
+This means, to set a current limit of 10A for the R4830S1,
+the register should be set to: 10A / 42.6A * 1250 ≈ 293 = `00 00 01 25`.
+
+The max output current readout (register `01 76`) uses the same scale but does not necessarily equal the limit
+that has been _set_, but rather specifies what the PSU is currently set to _and capable of outputting_.  
+This includes the output current limit (of course), but also the AC current limit
+and possibly also the AC voltage, DC voltage, temperature derating, etc.
+
+Examples (R4850G6):
+| DC current limit | AC current limit | AC voltage | DC voltage | Result             | Limited by   |
+| ---------------- | ---------------- | ---------- | ---------- | ------------------ | ------------ |
+| 100%             | off              | 230V       | 49.5V      | 96% (60.9 / 63.3A) | PSU capacity |
+| 50%              | off              | 230V       | 49.5V      | 50% (31.7 / 63.3A) | DC limit     |
+| 100%             | 2A               | 230V       | 49.5V      | 14% (9.0 / 63.3A)  | AC limit     |
 
 ### Sources
 
