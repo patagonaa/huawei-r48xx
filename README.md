@@ -98,7 +98,7 @@ Valid ranges (tested with R4830S1 and R4850G6)
 - Default Voltage: 48.0V (`C0 00`) to 58.4V (`E9 9A`)
 - Current: 0% (`00 00`) to 100% (`04 E2`)
     - Weirdly enough, this value goes up to 1250 instead of 1024, but 1250 coincides
-      pretty well with the maximum current from the graph in the datasheet.  
+      pretty well with the maximum current from the graph in the datasheet (see [Output current limit](#output-current-limit)).  
 - Fan duty cycle:
     - R4830S1: can be set to auto (`00 00`) or between 30% (`1E 00`) and 100% (`64 00`)
     - R4850G6: can be set to auto (`00 00`) or between [min. duty cycle](#82-register-get-response) (temperature dependent) and 100% (`64 00`)
@@ -133,17 +133,9 @@ controlled via the duty cycle (if noise matters).
 
 ## CAN protocol
 
-This information was put together from several sources, such as:
-- own CAN dumping/testing
-- https://github.com/craigpeacock/Huawei_R4850G2_CAN
-- https://endless-sphere.com/sphere/threads/rectifier-huawei-r4850g2-48v-42-58v-3000w.86038/post-1809287
-- https://endless-sphere.com/sphere/threads/rectifier-huawei-r4850g2-48v-42-58v-3000w.86038/post-1805865
-- https://endless-sphere.com/sphere/threads/rectifier-huawei-r4850g2-48v-42-58v-3000w.86038/post-1807301
-- https://github.com/BotoX/huawei-r48xx-esp32
-- https://github.com/577fkj/PowerControl/blob/c6d06935af79fcdbf3e71d1ad7ea4a86cd0c756f/main/src/protocol/huawei_r48xx.c
-- https://max.book118.com/html/2022/0414/5230000111004213.shtm
-    - see `docs/`
-- https://tieba.baidu.com/p/7475319470
+If you just want to control the PSU without implementing all the commands yourself, you can use my
+fork of an existing ESPHome integration (either directly or as a reference implementation):
+[patagonaa/esphome-huawei-r4850](https://github.com/patagonaa/esphome-huawei-r4850)
 
 ### General
 
@@ -152,7 +144,8 @@ The CAN interface uses 125kbps rate with extended 29-bit identifiers.
 ### CAN ID
 
 The CAN message IDs do not specify a single value/register.
-Instead, the message ID is used as an address, function code, message direction, etc..
+Instead, the message ID is used to encode the prococol, PSU address,
+command, message direction, etc.
 
 Example: `1081407F`
 
@@ -177,10 +170,10 @@ and dip switches on the two "slot detect" pins of the connector. Possibly, this 
 which slot it is in, which might set the PSU "hardware address", but I haven't tested this.
 
 ### `40` Data Request
+Requests a data response composed of multiple status messages (including one register each).
+
 Example (to PSU):
 `108140FE: 00 00 00 00 00 00 00 00`
-
-Requests a data response composed of multiple messages.
 
 ### `40` Data Reponse
 Example (from PSU):
@@ -227,6 +220,8 @@ Register values:
 \* See [Output current limit](#output-current-limit)
 
 ### `50` Info Request
+Requests an info response composed of multiple messages (including one register each).
+
 Example (to PSU): `108150FE: 00 00 00 00 00 00 00 00`
 
 ### `50` Info Response
@@ -255,6 +250,8 @@ Registers:
 | `00 06`     | `xx xx 00 00 00 00` | `00 06 01 01 00 00 00 00`                                                    | Hardware address                                                        |
 
 ### `D2` E-Label Request
+Requests an "E-Label" response composed of multiple status messages (including one part of the ASCII response each).
+
 Example (to PSU): `1081D2FE: 00 00 00 00 00 00 00 00`
 
 ### `D2` E-Label Response
@@ -294,6 +291,8 @@ BOM=
 ```
 
 ### `80` Register Set Request
+Sets the value of a register.
+
 Example (to PSU): `108180FE: 01 34 00 01 00 00 00 00`
 
 Data bytes:
@@ -317,6 +316,9 @@ Registers:
 \*\* Can not be set to any value on any PSU (see [Value ranges](#value-ranges)) (other values return an error and reset the internal value to 0 (auto)).
 
 ### `80` Register Set Response
+Response to setting a register value.
+Has an error status field in case the value is out of range or the parameter doesn't exist.
+
 Example (from PSU): `1081807E: 01 34 00 01 00 00 00 00`
 
 Data bytes:
@@ -324,16 +326,20 @@ Data bytes:
 - Byte 0 (high nibble) - 7: copied from request
 
 ### `82` Register Get Request
+Gets the value from a register.  
+Seems to work only for status registers (`01 70`, ...) not for config registers (`01 00`, ...).
+
 Example (to PSU):
 `108182FE: 01 34 00 00 00 00 00 00`
-
-Seems to work only for status registers (`01 70`, ...) not for config registers (`01 00`, ...).
 
 Data bytes:
 - Byte 0-1: register id
 - Byte 2-7: zero
 
 ### `82` Register Get Response
+Response to getting a register value.
+Has an error status field in case the parameter doesn't exist or can't be read.
+
 Example (to PSU):
 `1081827E: 01 34 00 01 00 00 00 00`
 
@@ -342,7 +348,7 @@ Data bytes:
 - Byte 0 (high nibble) - 1: register id
 - Byte 2-7: register value
 
-Registers (in addition to ones from `40` data response);
+Registers (in addition to ones from [`40` data response](#40-data-reponse));
 | register id | data                | example                                                                | description                                                                                                  |
 | ----------- | ------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | `01 87`     | `xx xx yy yy zz zz` | `01 87 2D 00 64 00 4B 87` =<br>duty 1 45%<br>duty set 100%<br>19335RPM | Fan control/status<br>`xx` = duty cycle 1\* (/25600)<br>`yy` = duty cycle target\*\* (/ 25600)<br>`zz` = RPM |
@@ -352,28 +358,55 @@ Registers (in addition to ones from `40` data response);
 \*\* On both PSUs, the duty cycle target is the greater of both the temperature-based duty cycle and the duty cycle set via CAN.
 
 
-### `11` Current (Unsolicited)
+### `11` Unsolicited
+Sent from the PSU unsolicited (without requesting anything).  
+Due to no documentation being available on any of this, the following is mostly speculation / own findings.
+
 Example (from PSU):
 ```
 1001117E: 00 01 00 00 00 00 04 97
+100011FE: 00 02 00 00 00 00 03 FE
 108111FE: 00 03 00 00 00 01 00 00
 ```
 
-Both `1001117E` (`00 01`) and `108111FE` (`00 03`) sent every 377ms without request.
+Messages:
+| proto id | address       | dir          | interval | register id (?) |
+| -------- | ------------- | ------------ | -------- | --------------- |
+| `20`     | 1 (PSU)       | 0 (from PSU) | ~377ms   | `00 01`         |
+| `20`     | 0 (broadcast) | 1 (to PSU)   | ~3000ms  | `00 02`         |
+| `21`     | 1 (PSU)       | 1 (to PSU)   | ~377ms   | `00 03`         |
 
-Due to the message direction (to PSU) in one of the messages I think this might also be used for PSU address negotiation.  
-Also, due to the load/current being included, I think this might be used to automatically share the load
-between multiple PSUs connected to the same CAN bus.
+Due to the different message directions and addresses, and due to the load/current being included,
+I think these are used for both address negotiation and automatic load sharing between multiple PSUs
+connected to the same CAN bus.
+
+Due to the messages including the current and being in regular intervals, they might (or at least could)
+also be used as a coulomb counter.
 
 Data bytes:
 - Byte 0-2: register id (?)
 - Bytes 2-7: register values (?)
 
-| register id | data                | example                                        | description                                                                                                  |
-| ----------- | ------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `00 01`     | `?? xx ?? ?? yy yy` | `00 01 00 00 00 00 04 97`<br>= ready, 94% load | `xx` = ready\*\* status (`00` = ready, `01` = not ready)<br>`yy` = Output load\* (fast)  ( / 1250 = 0-1)     |
-| `00 03`     | `?? ?? ?? xx yy yy` | `00 03 00 00 00 01 00 00`<br>= active, 0% load | `xx` = active\*\*\* status (`00` = not active, `01` = active)<br>`yy` = Output load\* (slow) ( / 1250 = 0-1) |
+| register id | data                | example                                        | description                                                                                           |
+| ----------- | ------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `00 01`     | `?? xx ?? ?? yy yy` | `00 01 00 00 00 00 04 97`<br>= ready, 94% load | `xx` = ready\*\* status (`00` = ready, `01` = not ready)<br>`yy` = Output load\* ( / 1250 = 0-1)      |
+| `00 02`     | `?? ?? ?? ?? yy yy` | `00 02 00 00 00 00 03 FE`<br>= 82% load        | `yy` = Output load\* ( / 1250 = 0-1)                                                                  |
+| `00 03`     | `?? ?? ?? xx yy yy` | `00 03 00 00 00 01 00 00`<br>= active, 0% load | `xx` = active\*\*\* status (`00` = not active, `01` = active)<br>`yy` = Output load\* ( / 1250 = 0-1) |
 
-\* See [Output current limit](#output-current-limit)  
-\*\* ready: PSU is ready to output voltage/power (AC input available, not faulted, ...)  
+\*     The value in `00 01` seems to update faster than the one in `00 03`. For calculatung current from this, see [Output current limit](#output-current-limit)  
+\*\*   ready: PSU is ready to output voltage/power (AC input available, not faulted, ...)  
 \*\*\* active: device is outputting voltage/power (not booting, not standby, ...)  
+
+### Sources
+
+This information was put together from several sources, such as:
+- own CAN dumping/testing
+- https://github.com/craigpeacock/Huawei_R4850G2_CAN
+- https://endless-sphere.com/sphere/threads/rectifier-huawei-r4850g2-48v-42-58v-3000w.86038/post-1809287
+- https://endless-sphere.com/sphere/threads/rectifier-huawei-r4850g2-48v-42-58v-3000w.86038/post-1805865
+- https://endless-sphere.com/sphere/threads/rectifier-huawei-r4850g2-48v-42-58v-3000w.86038/post-1807301
+- https://github.com/BotoX/huawei-r48xx-esp32
+- https://github.com/577fkj/PowerControl/blob/c6d06935af79fcdbf3e71d1ad7ea4a86cd0c756f/main/src/protocol/huawei_r48xx.c
+- https://max.book118.com/html/2022/0414/5230000111004213.shtm
+    - see `docs/`
+- https://tieba.baidu.com/p/7475319470
