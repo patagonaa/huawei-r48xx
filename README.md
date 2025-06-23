@@ -267,20 +267,23 @@ Data bytes:
 - Byte 2-7: data
 
 Registers:
-| register id | data                | example                                                                          | description                                                                                |
-| ----------- | ------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `01 00`     | `00 00 xx xx xx xx` | 53.5V * 1024 = 0x0000D600<br>= `01 00 00 00 00 00 D6 00`                         | Output voltage (V * 1024)                                                                  |
-| `01 01`     | `00 00 xx xx xx xx` |                                                                                  | Default output voltage (V * 1024)                                                          |
-| `01 02`     | `00 00 xx xx xx xx` |                                                                                  | Overvoltage protection? (V * 1024)                                                         |
-| `01 03`     | `00 00 xx xx xx xx` | 10A / 42.6A (for R4830S1) * 1250<br>≈ 293 = 0x125<br>= `01 03 00 00 00 00 01 25` | Current limit\* (0-1 * 1250)                                                               |
-| `01 04`     | `00 00 xx xx xx xx` |                                                                                  | Default current limit\* (0-1 * 1250)                                                       |
-| `01 09`     | `00 xx yy yy yy yy` | 4A * 1024 = 0x00001000<br>= `01 09 00 01 00 00 10 00`<br> (active bit set)       | Input/AC current limit<br>(persistent)<br>`xx` = limit active<br>`yy` = current (A * 1024) |
-| `01 14`     | `xx xx 00 00 00 00` | 50% = 0.5 * 25600 = 12800<br>= `01 14 32 00 00 00 00 00`                         | Fan duty cycle\*\* (0-1 * 25600)                                                           |
-| `01 32`     | `00 xx 00 00 00 00` |                                                                                  | Standby<br>`00` = PSU on<br>`01` = standby                                                 |
-| `01 34`     | `00 xx 00 00 00 00` |                                                                                  | Fan mode<br>`00` = auto<br>`01` = max<br>`02` = max (persistent)                           |
+| register id | data                | example                                                                          | description                                                                                    |
+|-------------|---------------------|----------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------|
+| `01 00`     | `00 00 xx xx xx xx` | 53.5V * 1024 = 0x0000D600<br>= `01 00 00 00 00 00 D6 00`                         | Output voltage (V * 1024)                                                                      |
+| `01 01`     | `00 00 xx xx xx xx` |                                                                                  | Default output voltage (V * 1024)                                                              |
+| `01 02`     | `00 00 xx xx xx xx` |                                                                                  | Overvoltage protection? (V * 1024)                                                             |
+| `01 03`     | `00 00 xx xx xx xx` | 10A / 42.6A (for R4830S1) * 1250<br>≈ 293 = 0x125<br>= `01 03 00 00 00 00 01 25` | Current limit\* (0-1 * 1250)                                                                   |
+| `01 04`     | `00 00 xx xx xx xx` |                                                                                  | Default current limit\* (0-1 * 1250)                                                           |
+| `01 09`     | `00 xx yy yy yy yy` | 4A * 1024 = 0x00001000<br>= `01 09 00 01 00 00 10 00`<br> (active bit set)       | Input/AC current limit\*\*<br>(persistent)<br>`xx` = limit active<br>`yy` = current (A * 1024) |
+| `01 14`     | `xx xx 00 00 00 00` | 50% = 0.5 * 25600 = 12800<br>= `01 14 32 00 00 00 00 00`                         | Fan duty cycle\*\*\* (0-1 * 25600)                                                             |
+| `01 32`     | `00 xx 00 00 00 00` |                                                                                  | Standby<br>`00` = PSU on<br>`01` = standby                                                     |
+| `01 34`     | `00 xx 00 00 00 00` |                                                                                  | Fan mode<br>`00` = auto<br>`01` = max<br>`02` = max (persistent)                               |
 
 \* See [Output current limit](#output-current-limit)  
-\*\* Can only be set to 0 or above the min. duty cycle (see [Register Get Response](#82-register-get-response)). (other values return an error and reset the internal value to 0 (auto)).  
+\*\* Hitting the input/AC current limit (when set to a low value like 5A) can cause the fan to turn off temporarily, even if a fan duty cycle is set.
+     When the output temperature hits a threshold of ~75°C, the fan is turned on again and turned off again at ~65°C.
+     Setting the fan mode to max overrides this and always turns on the fan.  
+\*\*\* Can only be set to 0 or above the min. duty cycle (see [Register Get Response](#82-register-get-response)). (other values return an error and reset the internal value to 0 (auto)).  
      On the R4850G6, the min. duty depends on the temperature  
      On the R4830S1, the min. duty is the current setpoint (which is probably a bug), so the duty cycle can only be increased or set to 0.
 
