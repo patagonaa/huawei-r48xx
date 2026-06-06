@@ -431,3 +431,14 @@ This information was put together from several sources, such as:
 - https://max.book118.com/html/2022/0414/5230000111004213.shtm
     - see `docs/`
 - https://tieba.baidu.com/p/7475319470
+
+## Support
+
+Please consider donating (via GitHub Sponsors) if this project is useful to you.
+
+You can also support this project in other ways:
+
+- by reporting wrong information (via issues)
+- by contributing additional information (via pull requests)
+
+AI-generated contributions are not welcome and will not be considered.
