@@ -102,7 +102,7 @@ DC-DC converter and MPPT solar chargers).
 This documentation is a summary of own tests, documentation of other products and a bunch of other peoples'
 implementations and documentation (see [Sources](#sources)).  
 Thus, this is incomplete and possibly not 100% correct. I did, however test and verify almost all of the things
-documented here, with both an R4830S1 and R4850G6, so I'm reasonably sure it _is_ correct.
+documented here, with an R4830S1, R4850G2 and R4850G6, so I'm reasonably sure it _is_ correct.
 
 ### General
 
@@ -168,7 +168,7 @@ Data bytes:
 
 Register values:
 | register id | example                         | description                                      |
-| ----------- | ------------------------------- | ------------------------------------------------ |
+|-------------|---------------------------------|--------------------------------------------------|
 | `01 0E`     | `00 00 00 00 2A 01` = 10753 Hrs | Operating Hours (?)                              |
 | `01 70`     | `00 00 00 1C DC 31` = 1847W     | Input Power ( / 1024 = A)                        |
 | `01 71`     | `00 00 00 00 C7 F5` = 49.99Hz   | Input Frequency ( / 1024 = Hz)                   |
@@ -208,7 +208,7 @@ Data bytes:
 
 Registers:
 | register id | data                | example                                                                      | description                                                             |
-| ----------- | ------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+|-------------|---------------------|------------------------------------------------------------------------------|-------------------------------------------------------------------------|
 | `00 01`     | `?? ?? ?? ?? ?? ??` | `00 01 00 00 40 46 12 67` (R4830S1) /<br>`00 01 00 00 40 68 0E 2C` (R4850G6) | Module characteristic data(?)                                           |
 | `00 02`     | `xx xx xx xx xx xx` | `00 02 64 46 85 50 02 AF` = ?                                                | Serial number                                                           |
 | `00 03`     | `xx xx xx xx xx xx` | `00 03 32 31 30 32 33 31` = "210231"                                         | Barcode part 1 (ASCII)                                                  |
@@ -267,25 +267,19 @@ Data bytes:
 - Byte 2-7: data
 
 Registers:
-| register id | data                | example                                                                          | description                                                                                    |
-|-------------|---------------------|----------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------|
-| `01 00`     | `00 00 xx xx xx xx` | 53.5V * 1024 = 0x0000D600<br>= `01 00 00 00 00 00 D6 00`                         | Output voltage (V * 1024)                                                                      |
-| `01 01`     | `00 00 xx xx xx xx` |                                                                                  | Default output voltage (V * 1024)                                                              |
-| `01 02`     | `00 00 xx xx xx xx` |                                                                                  | Overvoltage protection? (V * 1024)                                                             |
-| `01 03`     | `00 00 xx xx xx xx` | 10A / 42.6A (for R4830S1) * 1250<br>≈ 293 = 0x125<br>= `01 03 00 00 00 00 01 25` | Current limit\* (0-1 * 1250)                                                                   |
-| `01 04`     | `00 00 xx xx xx xx` |                                                                                  | Default current limit\* (0-1 * 1250)                                                           |
-| `01 09`     | `00 xx yy yy yy yy` | 4A * 1024 = 0x00001000<br>= `01 09 00 01 00 00 10 00`<br> (active bit set)       | Input/AC current limit\*\*<br>(persistent)<br>`xx` = limit active<br>`yy` = current (A * 1024) |
-| `01 14`     | `xx xx 00 00 00 00` | 50% = 0.5 * 25600 = 12800<br>= `01 14 32 00 00 00 00 00`                         | Fan duty cycle\*\*\* (0-1 * 25600)                                                             |
-| `01 32`     | `00 xx 00 00 00 00` |                                                                                  | Standby<br>`00` = PSU on<br>`01` = standby                                                     |
-| `01 34`     | `00 xx 00 00 00 00` |                                                                                  | Fan mode<br>`00` = auto<br>`01` = max<br>`02` = max (persistent)                               |
+| register id | data                | example                                                                          | description                                                                                                                                       |
+|-------------|---------------------|----------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------|
+| `01 00`     | `00 00 xx xx xx xx` | 53.5V * 1024 = 0x0000D600<br>= `01 00 00 00 00 00 D6 00`                         | Output voltage (V * 1024)                                                                                                                         |
+| `01 01`     | `00 00 xx xx xx xx` |                                                                                  | Default output voltage (V * 1024)                                                                                                                 |
+| `01 02`     | `00 00 xx xx xx xx` |                                                                                  | Overvoltage protection? (V * 1024)                                                                                                                |
+| `01 03`     | `00 00 xx xx xx xx` | 10A / 42.6A (for R4830S1) * 1250<br>≈ 293 = 0x125<br>= `01 03 00 00 00 00 01 25` | Current limit (0-1 * 1250)<br>See [Output current limit](#output-current-limit)                                                                   |
+| `01 04`     | `00 00 xx xx xx xx` |                                                                                  | Default current limit (0-1 * 1250)<br>See [Output current limit](#output-current-limit)                                                           |
+| `01 09` \*  | `00 xx yy yy yy yy` | 4A * 1024 = 0x00001000<br>= `01 09 00 01 00 00 10 00`<br> (active bit set)       | Input/AC current limit\*\*<br>(persistent)<br>`xx` = limit active<br>`yy` = current (A * 1024)<br>See [Input current limit](#input-current-limit) |
+| `01 14` \*  | `xx xx 00 00 00 00` | 50% = 0.5 * 25600 = 12800<br>= `01 14 32 00 00 00 00 00`                         | Fan duty cycle\*\*\* (0-1 * 25600)<br>See [Fan duty cycle](#fan-duty-cycle)                                                                       |
+| `01 32`     | `00 xx 00 00 00 00` |                                                                                  | Standby<br>`00` = PSU on<br>`01` = standby                                                                                                        |
+| `01 34`     | `00 xx 00 00 00 00` |                                                                                  | Fan mode<br>`00` = auto<br>`01` = max<br>`02` = max (persistent)                                                                                  |
 
-\* See [Output current limit](#output-current-limit)  
-\*\* Hitting the input/AC current limit (when set to a low value like 5A) can cause the fan to turn off temporarily, even if a fan duty cycle is set.
-     When the output temperature hits a threshold of ~75°C, the fan is turned on again and turned off again at ~65°C.
-     Setting the fan mode to max overrides this and always turns on the fan.  
-\*\*\* Can only be set to 0 or above the min. duty cycle (see [Register Get Response](#82-register-get-response)). (other values return an error and reset the internal value to 0 (auto)).  
-     On the R4850G6, the min. duty depends on the temperature  
-     On the R4830S1, the min. duty is the current setpoint (which is probably a bug), so the duty cycle can only be increased or set to 0.
+\* Not supported on R4850G2
 
 ### `80` Register Set Response
 Response to setting a register value.
@@ -321,13 +315,14 @@ Data bytes:
 - Byte 2-7: register value
 
 Registers (in addition to ones from [`40` data response](#40-data-reponse));
-| register id | data                | example                                                                   | description                                                                                                     |
-| ----------- | ------------------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `01 87`     | `xx xx yy yy zz zz` | `01 87 2D 00 64 00 4B 87` =<br>min. duty 45%<br>duty set 100%<br>19335RPM | Fan control/status<br>`xx` = min. duty cycle\* (/25600)<br>`yy` = duty cycle target\*\* (/ 25600)<br>`zz` = RPM |
+| register id | data                | example                                                                   | description                                                                                                         |
+|-------------|---------------------|---------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------|
+| `01 87` \*  | `xx xx yy yy zz zz` | `01 87 2D 00 64 00 4B 87` =<br>min. duty 45%<br>duty set 100%<br>19335RPM | Fan control/status<br>`xx` = min. duty cycle\*\* (/25600)<br>`yy` = duty cycle target\*\*\* (/ 25600)<br>`zz` = RPM |
 
-\*   On the R4850G6, the min. duty cycle is based on the current temperature (see [Fan control](#fan-control)).  
+\* not supported on R4850G2  
+\*\*   On the R4850G6, the min. duty cycle is based on the current temperature (see [Fan control](#fan-control)).  
      On the R4830S1, the min. duty cycle is always equal to the duty cycle target.  
-\*\* On both PSUs, the duty cycle target is the greater of both the temperature-based duty cycle and the duty cycle set via CAN.
+\*\*\* On both PSUs, the duty cycle target is the greater of both the temperature-based duty cycle and the duty cycle set via CAN.
 
 
 ### `11` Unsolicited
@@ -343,7 +338,7 @@ Example (from PSU):
 
 Messages:
 | proto id | address       | dir          | interval | register id (?) |
-| -------- | ------------- | ------------ | -------- | --------------- |
+|----------|---------------|--------------|----------|-----------------|
 | `20`     | 1 (PSU)       | 0 (from PSU) | ~377ms   | `00 01`         |
 | `20`     | 0 (broadcast) | 1 (to PSU)   | ~3000ms  | `00 02`         |
 | `21`     | 1 (PSU)       | 1 (to PSU)   | ~377ms   | `00 03`         |
@@ -360,9 +355,9 @@ Data bytes:
 - Bytes 2-7: register values (?)
 
 | register id | data                | example                                        | description                                                                                           |
-| ----------- | ------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+|-------------|---------------------|------------------------------------------------|-------------------------------------------------------------------------------------------------------|
 | `00 01`     | `?? xx ?? ?? yy yy` | `00 01 00 00 00 00 04 97`<br>= ready, 94% load | `xx` = ready\*\* status (`00` = ready, `01` = not ready)<br>`yy` = Output load\* ( / 1250 = 0-1)      |
-| `00 02`     | `?? ?? ?? ?? yy yy` | `00 02 00 00 00 00 03 FE`<br>= 82% load        | `yy` = Output load\* ( / 1250 = 0-1)                                                                  |
+| `00 02`     | `?? ?? ?? ?? xx xx` | `00 02 00 00 00 00 03 FE`<br>= 82% load        | `xx` = Output load\* ( / 1250 = 0-1)                                                                  |
 | `00 03`     | `?? ?? ?? xx yy yy` | `00 03 00 00 00 01 00 00`<br>= active, 0% load | `xx` = active\*\*\* status (`00` = not active, `01` = active)<br>`yy` = Output load\* ( / 1250 = 0-1) |
 
 \*     The value in `00 01` seems to update faster than the one in `00 03`. For calculatung current from this, see [Output current limit](#output-current-limit)  
@@ -373,7 +368,7 @@ Data bytes:
 
 #### CAN communication power
 The CAN communication is powered by the DC side.
-This means CAN communication is always possible when there is a battery connected, even if there is no AC input present.    
+This means CAN communication is always possible when there is a battery connected, even if there is no AC input present.
 
 #### Default values
 For some values (mostly voltage and current) there is a "default" value (which is saved in non-volatile memory)
@@ -413,10 +408,23 @@ and possibly also the AC voltage, DC voltage, temperature derating, etc.
 
 Examples (R4850G6):
 | DC current limit | AC current limit | AC voltage | DC voltage | Result             | Limited by   |
-| ---------------- | ---------------- | ---------- | ---------- | ------------------ | ------------ |
+|------------------|------------------|------------|------------|--------------------|--------------|
 | 100%             | off              | 230V       | 49.5V      | 96% (60.9 / 63.3A) | PSU capacity |
 | 50%              | off              | 230V       | 49.5V      | 50% (31.7 / 63.3A) | DC limit     |
 | 100%             | 2A               | 230V       | 49.5V      | 14% (9.0 / 63.3A)  | AC limit     |
+
+#### Input current limit
+
+Hitting the input/AC current limit (when set to a low value like 5A) can cause the fan to turn off temporarily, even if a fan duty cycle is set.
+When the output temperature hits a threshold of ~75°C, the fan is turned on again and turned off again at ~65°C.
+Setting the fan mode to max overrides this and always turns on the fan.
+
+#### Fan duty cycle
+
+Can only be set to 0 or above the min. duty cycle (other values return an error and reset the internal value to 0 (auto)).
+
+On the R4850G6, the min. duty depends on the temperature  
+On the R4830S1, the min. duty is the current setpoint (which is probably a bug), so the duty cycle can only be increased or set to 0, meaning to decrease the fan duty cycle, the value has to be set twice.
 
 ### Sources
 
