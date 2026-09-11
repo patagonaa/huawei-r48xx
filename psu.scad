@@ -2,8 +2,8 @@ frontWidth = 107.5;
 frontHeight = 42.6;
 frontDepth = 6;
 
-profileWidth = 105.5;
-profileHeight = 41.2;
+profileWidth = 105.8;
+profileHeight = 41.4;
 profileLength = 264;
 railWidth = 4.2;
 railHeightBottom = 2.1;
