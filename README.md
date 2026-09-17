@@ -174,9 +174,9 @@ Register values:
 | `01 71`     | `00 00 00 00 C7 F5` = 49.99Hz   | Input Frequency ( / 1024 = Hz)                   |
 | `01 72`     | `00 00 00 00 20 91` = 8.14A     | Input Current ( / 1024 = A)                      |
 | `01 73`     | `00 00 00 1C 20 9A` = 1800W     | Output Power ( / 1024 = W)                       |
-| `01 74`     | `00 00 00 00 03 E6` = 97%       | Efficiency ( / 1024 = 0-1)                       |
+| `01 74`     | `00 00 00 00 03 E6` = 97.5%     | Efficiency ( / 1024 = 0-1)                       |
 | `01 75`     | `00 00 00 00 CD B1` = 51.4V     | Output Voltage ( / 1024 = V)                     |
-| `01 76`     | `00 00 00 00 04 00` = 82%       | Max Output Current\* ( / 1250 = 0-1)             |
+| `01 76`     | `00 00 00 00 04 00` = 81.9%     | Max Output Current\* ( / 1250 = 0-1)             |
 | `01 78`     | `00 00 00 03 8B 80` = 226.8V    | Input Voltage ( / 1024 = V)                      |
 | `01 7F`     | `00 00 00 00 84 00` = 33°C      | Output Temperature ( / 1024 = °C)                |
 | `01 80`     | `00 00 00 00 6C 00` = 27°C      | Input Temperature ( / 1024 = °C)                 |
