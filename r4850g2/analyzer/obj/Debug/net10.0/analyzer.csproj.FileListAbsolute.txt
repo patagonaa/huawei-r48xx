@@ -1,0 +1,15 @@
+/home/patagona/Projects/huawei-r48xx/r4850g2/analyzer/bin/Debug/net10.0/analyzer
+/home/patagona/Projects/huawei-r48xx/r4850g2/analyzer/bin/Debug/net10.0/analyzer.deps.json
+/home/patagona/Projects/huawei-r48xx/r4850g2/analyzer/bin/Debug/net10.0/analyzer.runtimeconfig.json
+/home/patagona/Projects/huawei-r48xx/r4850g2/analyzer/bin/Debug/net10.0/analyzer.dll
+/home/patagona/Projects/huawei-r48xx/r4850g2/analyzer/bin/Debug/net10.0/analyzer.pdb
+/home/patagona/Projects/huawei-r48xx/r4850g2/analyzer/obj/Debug/net10.0/analyzer.GeneratedMSBuildEditorConfig.editorconfig
+/home/patagona/Projects/huawei-r48xx/r4850g2/analyzer/obj/Debug/net10.0/analyzer.AssemblyInfoInputs.cache
+/home/patagona/Projects/huawei-r48xx/r4850g2/analyzer/obj/Debug/net10.0/analyzer.AssemblyInfo.cs
+/home/patagona/Projects/huawei-r48xx/r4850g2/analyzer/obj/Debug/net10.0/analyzer.csproj.CoreCompileInputs.cache
+/home/patagona/Projects/huawei-r48xx/r4850g2/analyzer/obj/Debug/net10.0/analyzer.sourcelink.json
+/home/patagona/Projects/huawei-r48xx/r4850g2/analyzer/obj/Debug/net10.0/analyzer.dll
+/home/patagona/Projects/huawei-r48xx/r4850g2/analyzer/obj/Debug/net10.0/refint/analyzer.dll
+/home/patagona/Projects/huawei-r48xx/r4850g2/analyzer/obj/Debug/net10.0/analyzer.pdb
+/home/patagona/Projects/huawei-r48xx/r4850g2/analyzer/obj/Debug/net10.0/analyzer.genruntimeconfig.cache
+/home/patagona/Projects/huawei-r48xx/r4850g2/analyzer/obj/Debug/net10.0/ref/analyzer.dll
