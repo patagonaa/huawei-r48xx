@@ -267,19 +267,22 @@ Data bytes:
 - Byte 2-7: data
 
 Registers:
-| register id | data                | example                                                                          | description                                                                                                                                       |
-|-------------|---------------------|----------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------|
-| `01 00`     | `00 00 xx xx xx xx` | 53.5V * 1024 = 0x0000D600<br>= `01 00 00 00 00 00 D6 00`                         | Output voltage (V * 1024)                                                                                                                         |
-| `01 01`     | `00 00 xx xx xx xx` |                                                                                  | Default output voltage (V * 1024)                                                                                                                 |
-| `01 02`     | `00 00 xx xx xx xx` |                                                                                  | Overvoltage protection? (V * 1024)                                                                                                                |
-| `01 03`     | `00 00 xx xx xx xx` | 10A / 42.6A (for R4830S1) * 1250<br>≈ 293 = 0x125<br>= `01 03 00 00 00 00 01 25` | Current limit (0-1 * 1250)<br>See [Output current limit](#output-current-limit)                                                                   |
-| `01 04`     | `00 00 xx xx xx xx` |                                                                                  | Default current limit (0-1 * 1250)<br>See [Output current limit](#output-current-limit)                                                           |
-| `01 09` \*  | `00 xx yy yy yy yy` | 4A * 1024 = 0x00001000<br>= `01 09 00 01 00 00 10 00`<br> (active bit set)       | Input/AC current limit\*\*<br>(persistent)<br>`xx` = limit active<br>`yy` = current (A * 1024)<br>See [Input current limit](#input-current-limit) |
-| `01 14` \*  | `xx xx 00 00 00 00` | 50% = 0.5 * 25600 = 12800<br>= `01 14 32 00 00 00 00 00`                         | Fan duty cycle\*\*\* (0-1 * 25600)<br>See [Fan duty cycle](#fan-duty-cycle)                                                                       |
-| `01 32`     | `00 xx 00 00 00 00` |                                                                                  | Standby<br>`00` = PSU on<br>`01` = standby                                                                                                        |
-| `01 34`     | `00 xx 00 00 00 00` |                                                                                  | Fan mode<br>`00` = auto<br>`01` = max<br>`02` = max (persistent)                                                                                  |
+| reg id    | data                | example                                                                | Persistent | description                                                                                                             |
+|-----------|---------------------|------------------------------------------------------------------------|:----------:|-------------------------------------------------------------------------------------------------------------------------|
+| `01 00`   | `00 00 xx xx xx xx` | 53.5V * 1024 = 0x0000D600<br>= `01 00 00 00 00 00 D6 00`               |            | Output voltage (V * 1024)                                                                                               |
+| `01 01`   | `00 00 xx xx xx xx` |                                                                        |     X      | Default output voltage (V * 1024)                                                                                       |
+| `01 02`   | `00 00 xx xx xx xx` |                                                                        |     ?      | Overvoltage protection? (V * 1024)                                                                                      |
+| `01 03`   | `00 00 xx xx xx xx` | 10A / 42.6A (R4830S1) * 1250<br>≈ 0x125<br>= `01 03 00 00 00 00 01 25` |            | Current limit (0-1 * 1250)<br>See [Output current limit](#output-current-limit)                                         |
+| `01 04`   | `00 00 xx xx xx xx` |                                                                        |     X      | Default current limit (0-1 * 1250)<br>See [Output current limit](#output-current-limit)                                 |
+| `01 09`\* | `00 xx yy yy yy yy` | 4A * 1024 = 0x1000<br>= `01 09 00 01 00 00 10 00`<br> (active bit set) |   X\*\*    | AC current limit<br>`xx` = limit active<br>`yy` = current (A * 1024)<br>See [Input current limit](#input-current-limit) |
+| `01 14`\* | `xx xx 00 00 00 00` | 50% = 0.5 * 25600 = 0x3200<br>= `01 14 32 00 00 00 00 00`              |            | Fan duty cycle (0-1 * 25600)<br>See [Fan duty cycle](#fan-duty-cycle)                                                   |
+| `01 32`   | `00 xx 00 00 00 00` |                                                                        |            | Standby<br>`00` = PSU on<br>`01` = standby                                                                              |
+| `01 34`   | `00 xx 00 00 00 00` |                                                                        |     X      | Fan mode<br>`00` = auto<br>`01` = max                                                                                   |
 
 \* Not supported on R4850G2
+\*\* Only the AC input current limit _value_ is persisted, not whether the limit is _active_.  
+This means, when setting the limit to 0.1A (too low for startup) and then to 0 (off), the PSU will not start up anymore
+(fan will go full speed and output will be \<10V). To avoid this, set the limit to a high value (like 20A) before turning it off.
 
 ### `80` Register Set Response
 Response to setting a register value.
