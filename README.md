@@ -163,20 +163,19 @@ Example (from PSU):
 
 Data bytes:
 - Byte 0-1: register id
-- Bytes 2-3: ? (always 0)
-- Bytes 4-7: int32 value
+- Bytes 2-7: data
 
 Register values:
 | register id | example                         | description                                      |
 |-------------|---------------------------------|--------------------------------------------------|
-| `01 0E`     | `00 00 00 00 2A 01` = 10753 Hrs | Operating Hours (?)                              |
+| `01 0E`     | `00 00 00 00 2A 01` = 10753 Hrs | Operating Hours                                  |
 | `01 70`     | `00 00 00 1C DC 31` = 1847W     | Input Power ( / 1024 = A)                        |
 | `01 71`     | `00 00 00 00 C7 F5` = 49.99Hz   | Input Frequency ( / 1024 = Hz)                   |
 | `01 72`     | `00 00 00 00 20 91` = 8.14A     | Input Current ( / 1024 = A)                      |
 | `01 73`     | `00 00 00 1C 20 9A` = 1800W     | Output Power ( / 1024 = W)                       |
 | `01 74`     | `00 00 00 00 03 E6` = 97.5%     | Efficiency ( / 1024 = 0-1)                       |
 | `01 75`     | `00 00 00 00 CD B1` = 51.4V     | Output Voltage ( / 1024 = V)                     |
-| `01 76`     | `00 00 00 00 04 00` = 81.9%     | Max Output Current\* ( / 1250 = 0-1)             |
+| `01 76`     | `00 00 00 00 04 00` = 100.0%    | Max Output Current\* ( / 1024 = 0-1.22)          |
 | `01 78`     | `00 00 00 03 8B 80` = 226.8V    | Input Voltage ( / 1024 = V)                      |
 | `01 7F`     | `00 00 00 00 84 00` = 33°C      | Output Temperature ( / 1024 = °C)                |
 | `01 80`     | `00 00 00 00 6C 00` = 27°C      | Input Temperature ( / 1024 = °C)                 |
@@ -193,6 +192,8 @@ Example (to PSU): `108150FE: 00 00 00 00 00 00 00 00`
 
 ### `50` Info Response
 Example (from PSU):
+
+R4830S1:
 ```
 1081507F: 00 01 00 00 40 46 12 67
 1081507F: 00 02 64 46 85 50 02 AF
@@ -202,19 +203,39 @@ Example (from PSU):
 1081507E: 00 06 01 01 00 00 00 00
 ```
 
+R4850G2:
+```
+1081507F: 00 01 00 00 40 68 0e 27
+1081507F: 00 02 24 68 23 8c 3c 2f
+1081507F: 00 03 32 31 30 32 33 31
+1081507F: 00 04 30 48 42 4a 44 30
+1081507F: 00 05 01 00 02 01 02 01
+1081507E: 00 06 01 01 00 00 00 00
+```
+
+R4875G6:
+```
+1081507F: 00 01 00 00 40 8a 11 53
+1081507F: 00 02 e6 30 66 10 8f 6e
+1081507F: 00 03 32 31 30 32 33 31
+1081507F: 00 04 32 4e 46 45 42 54
+1081507F: 00 05 01 00 08 06 08 06
+1081507E: 00 06 06 09 00 00 00 00
+```
+
 Data bytes:
 - Byte 0-1: register id
 - Bytes 2-7: data
 
 Registers:
-| register id | data                | example                                                                      | description                                                             |
-|-------------|---------------------|------------------------------------------------------------------------------|-------------------------------------------------------------------------|
-| `00 01`     | `?? ?? ?? ?? ?? ??` | `00 01 00 00 40 46 12 67` (R4830S1) /<br>`00 01 00 00 40 68 0E 2C` (R4850G6) | Module characteristic data(?)                                           |
-| `00 02`     | `xx xx xx xx xx xx` | `00 02 64 46 85 50 02 AF` = ?                                                | Serial number                                                           |
-| `00 03`     | `xx xx xx xx xx xx` | `00 03 32 31 30 32 33 31` = "210231"                                         | Barcode part 1 (ASCII)                                                  |
-| `00 04`     | `xx xx xx xx xx xx` | `00 04 31 54 52 52 4C 55` = "1TRRLU"                                         | Barcode part 2 (ASCII)                                                  |
-| `00 05`     | `xx xx yy yy zz zz` | `00 05 05 00 01 0D 01 0D`                                                    | `xx` = HW version,<br>`yy` = DC-DC SW version,<br>`zz` = PFC SW version |
-| `00 06`     | `xx xx 00 00 00 00` | `00 06 01 01 00 00 00 00`                                                    | Hardware address                                                        |
+| register id | data                | example                                                                                  | description                                                             |
+|-------------|---------------------|------------------------------------------------------------------------------------------|-------------------------------------------------------------------------|
+| `00 01`     | `?? ?? xx xx ?? ??` | `00 01 00 00 40 46 12 67` = 35A (R4830S1) /<br>`00 01 00 00 40 8a 11 53` = 69A (R4875G5) | Module characteristic data<br>(`xx` & 0x3FF) / 2 = nominal current      |
+| `00 02`     | `xx xx xx xx xx xx` | `00 02 64 46 85 50 02 AF` = ?                                                            | Serial number                                                           |
+| `00 03`     | `xx xx xx xx xx xx` | `00 03 32 31 30 32 33 31` = "210231"                                                     | Barcode part 1 (ASCII)                                                  |
+| `00 04`     | `xx xx xx xx xx xx` | `00 04 31 54 52 52 4C 55` = "1TRRLU"                                                     | Barcode part 2 (ASCII)                                                  |
+| `00 05`     | `xx xx yy yy zz zz` | `00 05 05 00 01 0D 01 0D`                                                                | `xx` = HW version,<br>`yy` = DC-DC SW version,<br>`zz` = PFC SW version |
+| `00 06`     | `xx xx 00 00 00 00` | `00 06 01 01 00 00 00 00`                                                                | `xx` = Hardware address                                                 |
 
 ### `D2` E-Label Request
 Requests an "E-Label" response composed of multiple status messages (including one part of the ASCII response each).
@@ -272,8 +293,8 @@ Registers:
 | `01 00`   | `00 00 xx xx xx xx` | 53.5V * 1024 = 0x0000D600<br>= `01 00 00 00 00 00 D6 00`               |            | Output voltage (V * 1024)                                                                                               |
 | `01 01`   | `00 00 xx xx xx xx` |                                                                        |     X      | Default output voltage (V * 1024)                                                                                       |
 | `01 02`   | `00 00 xx xx xx xx` |                                                                        |     ?      | Overvoltage protection? (V * 1024)                                                                                      |
-| `01 03`   | `00 00 xx xx xx xx` | 10A / 42.6A (R4830S1) * 1250<br>≈ 0x125<br>= `01 03 00 00 00 00 01 25` |            | Current limit (0-1 * 1250)<br>See [Output current limit](#output-current-limit)                                         |
-| `01 04`   | `00 00 xx xx xx xx` |                                                                        |     X      | Default current limit (0-1 * 1250)<br>See [Output current limit](#output-current-limit)                                 |
+| `01 03`   | `00 00 xx xx xx xx` | 10A / 35A (R4830S1) * 1024<br>≈ 0x125<br>= `01 03 00 00 00 00 01 25`   |            | Current limit (0-1.22 * 1024)<br>See [Output current limit](#output-current-limit)                                      |
+| `01 04`   | `00 00 xx xx xx xx` |                                                                        |     X      | Default current limit (0-1.22 * 1024)<br>See [Output current limit](#output-current-limit)                              |
 | `01 09`\* | `00 xx yy yy yy yy` | 4A * 1024 = 0x1000<br>= `01 09 00 01 00 00 10 00`<br> (active bit set) |   X\*\*    | AC current limit<br>`xx` = limit active<br>`yy` = current (A * 1024)<br>See [Input current limit](#input-current-limit) |
 | `01 14`\* | `xx xx 00 00 00 00` | 50% = 0.5 * 25600 = 0x3200<br>= `01 14 32 00 00 00 00 00`              |            | Fan duty cycle (0-1 * 25600)<br>See [Fan duty cycle](#fan-duty-cycle)                                                   |
 | `01 32`   | `00 xx 00 00 00 00` |                                                                        |            | Standby<br>`00` = PSU on<br>`01` = standby                                                                              |
@@ -357,11 +378,11 @@ Data bytes:
 - Byte 0-2: register id (?)
 - Bytes 2-7: register values (?)
 
-| register id | data                | example                                        | description                                                                                           |
-|-------------|---------------------|------------------------------------------------|-------------------------------------------------------------------------------------------------------|
-| `00 01`     | `?? xx ?? ?? yy yy` | `00 01 00 00 00 00 04 97`<br>= ready, 94% load | `xx` = ready\*\* status (`00` = ready, `01` = not ready)<br>`yy` = Output load\* ( / 1250 = 0-1)      |
-| `00 02`     | `?? ?? ?? ?? xx xx` | `00 02 00 00 00 00 03 FE`<br>= 82% load        | `xx` = Output load\* ( / 1250 = 0-1)                                                                  |
-| `00 03`     | `?? ?? ?? xx yy yy` | `00 03 00 00 00 01 00 00`<br>= active, 0% load | `xx` = active\*\*\* status (`00` = not active, `01` = active)<br>`yy` = Output load\* ( / 1250 = 0-1) |
+| register id | data                | example                                           | description                                                                                              |
+|-------------|---------------------|---------------------------------------------------|----------------------------------------------------------------------------------------------------------|
+| `00 01`     | `?? xx ?? ?? yy yy` | `00 01 00 00 00 00 04 97`<br>= ready, 114.7% load | `xx` = ready\*\* status (`00` = ready, `01` = not ready)<br>`yy` = Output load\* ( / 1024 = 0-1.22)      |
+| `00 02`     | `?? ?? ?? ?? xx xx` | `00 02 00 00 00 00 03 FE`<br>= 99.8% load         | `xx` = Output load\* ( / 1024 = 0-1.22)                                                                  |
+| `00 03`     | `?? ?? ?? xx yy yy` | `00 03 00 00 00 01 00 00`<br>= active, 0% load    | `xx` = active\*\*\* status (`00` = not active, `01` = active)<br>`yy` = Output load\* ( / 1024 = 0-1.22) |
 
 \*     The value in `00 01` seems to update faster than the one in `00 03`. For calculatung current from this, see [Output current limit](#output-current-limit)  
 \*\*   ready: PSU is ready to output voltage/power (AC input available, not faulted, ...)  
@@ -388,21 +409,21 @@ When setting parameters, the PSU reports an error when the value exceeds the val
 Valid ranges (tested with R4830S1 and R4850G6)
 - Voltage: 41.0V (`A4 00`) to 58.6V (`EA 67`)
 - Default Voltage: 48.0V (`C0 00`) to 58.4V (`E9 9A`)
-- Current: 0% (`00 00`) to 100% (`04 E2`)
-    - Weirdly enough, this value goes up to 1250 instead of 1024, but 1250 coincides
-      pretty well with the maximum current from the graph in the datasheet (see [Output current limit](#output-current-limit)).  
+- Current: 0% (`00 00`) to 122% (`04 E2`)
+    - Weirdly enough, this value goes up to 1250 instead of 1024, but 1024 coincides
+      pretty well with the nominal current from "Module characteristic data" (see [Output current limit](#output-current-limit)).  
 - Fan duty cycle:
     - R4830S1: can be set to auto (`00 00`) or between 30% (`1E 00`) and 100% (`64 00`)
     - R4850G6: can be set to auto (`00 00`) or between [min. duty cycle](#82-register-get-response) (temperature dependent) and 100% (`64 00`)
 
 #### Output current limit
 
-The output current limit is set as a ratio of the maximum possible output current.  
-For the R4830S1, this means 1250 ≈ 42.6A, for the R4850G6 1250 ≈ 63.3A
-(both compared to the PSU's internal current measurment).
+The output current limit is set as a ratio of the nominal output current (see [Info response](#50-info-response)).  
+For the R4830S1, this means 1024 = 35A, for the R4850G6 1024 = 52A.  
+However, 1024 is not the maximum, this field goes to 1250, for example the R4830S1 can output 1250 / 1024 * 35A ≈ 42.7A, but not necessarily at every voltage.
 
 This means, to set a current limit of 10A for the R4830S1,
-the register should be set to: 10A / 42.6A * 1250 ≈ 293 = `00 00 01 25`.
+the register should be set to: 10A / 35A * 1024 ≈ 293 = `00 00 01 25`.
 
 The max output current readout (register `01 76`) uses the same scale but does not necessarily equal the limit
 that has been _set_, but rather specifies what the PSU is currently set to _and capable of outputting_.  
@@ -410,11 +431,11 @@ This includes the output current limit (of course), but also the AC current limi
 and possibly also the AC voltage, DC voltage, temperature derating, etc.
 
 Examples (R4850G6):
-| DC current limit | AC current limit | AC voltage | DC voltage | Result             | Limited by   |
-|------------------|------------------|------------|------------|--------------------|--------------|
-| 100%             | off              | 230V       | 49.5V      | 96% (60.9 / 63.3A) | PSU capacity |
-| 50%              | off              | 230V       | 49.5V      | 50% (31.7 / 63.3A) | DC limit     |
-| 100%             | 2A               | 230V       | 49.5V      | 14% (9.0 / 63.3A)  | AC limit     |
+| DC current limit | AC current limit | AC voltage | DC voltage | Max current readout | Limited by   |
+|------------------|------------------|------------|------------|---------------------|--------------|
+| 122% (63.5A)     | off              | 230V       | 49.5V      | **117% (60.9A)**    | PSU capacity |
+| 50%  (26.0A)     | off              | 230V       | 49.5V      | **50% (26.0A)**     | DC limit     |
+| 100% (52.0A)     | 2A               | 230V       | 49.5V      | **17% (9.0A)**      | AC limit     |
 
 #### Input current limit
 
