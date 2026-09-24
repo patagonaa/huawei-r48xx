@@ -132,9 +132,8 @@ but even the original "SMU02B" controller seems to use only the software address
 
 The "software address" seems to be negotiated automatically if multiple PSUs are on one CAN bus (starting at 1).
 
-The "hardware address" might be fixed per slot, because the original PSU rack has a network of resistors
-and dip switches on the two "slot detect" pins of the connector. Possibly, this allows the PSU to know
-which slot it is in, which might set the PSU "hardware address", but I haven't tested this.
+The "hardware address" looks like it might be the [slot ID](#slot-id), but in my testing I couldn't get the PSU to respond
+at all when this bit was set to "hardware", so this might be unused or have another purpose.
 
 ### `40` Data Request
 Requests a data response composed of multiple status messages (including one register each).
@@ -235,7 +234,37 @@ Registers:
 | `00 03`     | `xx xx xx xx xx xx` | `00 03 32 31 30 32 33 31` = "210231"                                                     | Barcode part 1 (ASCII)                                                  |
 | `00 04`     | `xx xx xx xx xx xx` | `00 04 31 54 52 52 4C 55` = "1TRRLU"                                                     | Barcode part 2 (ASCII)                                                  |
 | `00 05`     | `xx xx yy yy zz zz` | `00 05 05 00 01 0D 01 0D`                                                                | `xx` = HW version,<br>`yy` = DC-DC SW version,<br>`zz` = PFC SW version |
-| `00 06`     | `xx xx 00 00 00 00` | `00 06 01 01 00 00 00 00`                                                                | `xx` = Hardware address                                                 |
+| `00 06`     | `xx yy 00 00 00 00` | `00 06 01 01 00 00 00 00`                                                                | `xx` = Slot ID (bottom pin), `yy` = Slot ID (top pin)                   |
+
+#### Slot ID
+This can be used to determine the physical slot the PSU is in, even though the PSU addresses are negotiated automatically (and thus can change from boot to boot).
+
+On the original backplane, these are connected to resistors / resistor networks / dip switches to set a unique ID for each slot.
+
+The bottom slot detect pin uses a resistor to ground, both to turn on the PSU and encode the slot ID:
+| tested resistor values | slot id value |
+|------------------------|---------------|
+| short to gnd           | `01`          |
+| 6.3k                   | `02`          |
+| 10k                    | `03`          |
+| 16.3k to 24k           | `04`          |
+| 34k                    | `05`          |
+| 47k                    | `06`          |
+| 100k                   | `07`          |
+| 147k                   | `08`          |
+
+The top slot detect pin uses a voltage injected into the pin to set the slot ID:
+| tested voltage values | slot id value |
+|-----------------------|---------------|
+| short to gnd          | `01`          |
+| 0.3-0.7V              | `02`          |
+| 1V                    | `03`          |
+| 1.2-1.5V              | `04`          |
+| 1.8V                  | `05`          |
+| 2V                    | `06`          |
+| 2.3-2.6V              | `07`          |
+| >2.8V                 | `08`          |
+
 
 ### `D2` E-Label Request
 Requests an "E-Label" response composed of multiple status messages (including one part of the ASCII response each).
