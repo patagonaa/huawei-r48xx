@@ -119,7 +119,7 @@ Example: `1081407F`
 Interpretation:  
 Bits: `000a aaaa abbb bbbb cccc cccc deee eefg`
 - 0 (bit 31-29): always zero (CAN ID is 29-bit)
-- a (bit 28-23): protocol ID (always `21`)
+- a (bit 28-23): protocol ID (can be `20` or `21` - looks like `20` is used for communication between PSUs, `21` is used for communication between controller and PSU)
 - b (bit 22-16): address (0 = broadcast, 1 = first, ...)
 - c (bit 15-8): command id
 - d (bit 7): message source (0 = from PSU, 1 = to PSU)
@@ -130,10 +130,54 @@ Bits: `000a aaaa abbb bbbb cccc cccc deee eefg`
 Apparently the PSU can have a "hardware address" and "software address"
 but even the original "SMU02B" controller seems to use only the software address.
 
-The "software address" seems to be negotiated automatically if multiple PSUs are on one CAN bus (starting at 1).
+The "software address" is negotiated automatically if multiple PSUs are on one CAN bus (see [Software address negotiation](#software-address-negotiation)).
 
-The "hardware address" looks like it might be the [slot ID](#slot-id), but in my testing I couldn't get the PSU to respond
-at all when this bit was set to "hardware", so this might be unused or have another purpose.
+I couldn't get any PSUs to respond to the "hardware address" so far. Looking at the docs, it seems like this address has to be set via CAN and is saved in the PSU.
+
+### Software address negotiation
+The "software address" is negotiated between the PSUs whenever a PSU powers up.  
+The addresses start at 1 and the order is determined by the order of serial numbers (lowest serial = addr 1, second lowest = addr 2, etc.).
+This serial number is the same as can be read from register `002` of the `50` info response.
+
+The negotiation flow is as follows:
+
+- When a PSU is plugged in, it sends `30 01` and its serial number to the CAN ID `0x1000107E` 3 times ~130ms apart.
+- Each PSU (including the new one itself) then sends `30 02` and its serial number with the CAN ID `0x10xx107E` (where `xx` is its current soft address) ~8 times (exact number is insignificant) ~350ms apart.
+- Each PSU (now knowing all other serial numbers) then sorts the serial numbers and sets its software address to its position in the list.
+
+Example:
+```
+1001117E: 00 01 00 00 00 00 00 00 <-- messages from address 1 (PSU 1, serial 64 46 ...)
+1001117E: 00 01 00 00 00 00 00 00
+1001117E: 00 01 00 00 00 00 00 00
+--- PSU 2 (serial 24 68 ...) plugged in here ---
+1000107E: 30 01 24 68 23 8C 3C 2F <-- PSU 2 (serial 24 68 ...) requests renegotiation (3 times)
+1000107E: 30 01 24 68 23 8C 3C 2F
+1001107E: 30 02 64 46 85 50 02 AF <-- PSU 1 sends its serial number 9 times
+1000107E: 30 01 24 68 23 8C 3C 2F
+1001107E: 30 02 64 46 85 50 02 AF
+1001107E: 30 02 24 68 23 8C 3C 2F <-- PSU 2 sends its serial number 8 times
+1001107E: 30 02 64 46 85 50 02 AF
+1001107E: 30 02 24 68 23 8C 3C 2F
+1001107E: 30 02 64 46 85 50 02 AF
+1001107E: 30 02 24 68 23 8C 3C 2F
+1001107E: 30 02 64 46 85 50 02 AF
+1001107E: 30 02 24 68 23 8C 3C 2F
+1001107E: 30 02 64 46 85 50 02 AF
+1001107E: 30 02 24 68 23 8C 3C 2F
+1001107E: 30 02 64 46 85 50 02 AF
+1001107E: 30 02 24 68 23 8C 3C 2F
+1001107E: 30 02 64 46 85 50 02 AF
+1001107E: 30 02 24 68 23 8C 3C 2F
+1001107E: 30 02 64 46 85 50 02 AF
+1001107E: 30 02 24 68 23 8C 3C 2F
+--- Both PSUs stop sending their serial numbers and determine their new software address by the serial number sort order
+1001117E: 00 01 00 01 00 00 00 00 <-- message from PSU 2 (got ID 1 because its serial number is lower)
+1002117E: 00 01 00 00 00 00 00 00 <-- message from PSU 1 (now switched to ID 2 because its serial number is higher)
+1001117E: 00 01 00 01 00 00 00 00
+1002117E: 00 01 00 00 00 00 00 00
+```
+
 
 ### `40` Data Request
 Requests a data response composed of multiple status messages (including one register each).
