@@ -142,8 +142,9 @@ This serial number is the same as can be read from register `002` of the `50` in
 The negotiation flow is as follows:
 
 - When a PSU is plugged in, it sends `30 01` and its serial number to the CAN ID `0x1000107E` 3 times ~130ms apart.
-- Each PSU (including the new one itself) then sends `30 02` and its serial number with the CAN ID `0x10xx107E` (where `xx` is its current soft address) ~8 times (exact number is insignificant) ~350ms apart.
+- This causes each PSU (including the new one itself) to pause normal CAN message transmission and send `30 02` and its serial number with the CAN ID `0x10xx107E` (where `xx` is its current soft address) ~8 times (exact number is insignificant) ~350ms apart.
 - Each PSU (now knowing all other serial numbers) then sorts the serial numbers and sets its software address to its position in the list.
+- After an additional ~2-3 seconds (~5 seconds after first serial number message) each PSU resumes sending normal CAN messages with their new address.
 
 Example:
 ```
@@ -171,7 +172,9 @@ Example:
 1001107E: 30 02 24 68 23 8C 3C 2F
 1001107E: 30 02 64 46 85 50 02 AF
 1001107E: 30 02 24 68 23 8C 3C 2F
---- Both PSUs stop sending their serial numbers and determine their new software address by the serial number sort order
+--- Both PSUs stop sending their serial numbers ---
+--- ~3 second gap ---
+--- Both PSUs start sending messages again with their new software address determined by the serial number sort order ---
 1001117E: 00 01 00 01 00 00 00 00 <-- message from PSU 2 (got ID 1 because its serial number is lower)
 1002117E: 00 01 00 00 00 00 00 00 <-- message from PSU 1 (now switched to ID 2 because its serial number is higher)
 1001117E: 00 01 00 01 00 00 00 00
