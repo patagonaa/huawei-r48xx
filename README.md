@@ -60,10 +60,10 @@ looking at the connector at the back of the PSU, the connections (left to right 
     - connected to DC negative internally
     - likely used to pre-charge internal capacitors via a resistor when plugging in module with battery voltage present
 - DC positive (not earth referenced)
-- Slot detect (top/bottom)
-    - can both be pulled to DC negative to enable PSU
+- Slot detect (top (white) / bottom (black))
+    - bottom pin needs to be pulled to DC negative to enable PSU
     - resistor signaling used for addressing PSU by its slot
-- CAN (top/bottom)
+- CAN (top (white) / bottom (black))
     - top/white = CAN_L
     - bottom/black = CAN_H
 - PE
@@ -128,7 +128,7 @@ Bits: `000a aaaa abbb bbbb cccc cccc deee eefg`
 - g (bit 0): finished marker (0 = finished, 1 = more data coming)
 
 Apparently the PSU can have a "hardware address" and "software address"
-but even the original "SMU02B" controller seems to use only the software address.
+but even the original "SMU02B" controller ("Site Monitoring Unit") seems to use only the software address.
 
 The "software address" is negotiated automatically if multiple PSUs are on one CAN bus (see [Software address negotiation](#software-address-negotiation)).
 
@@ -281,24 +281,12 @@ Registers:
 | `00 03`     | `xx xx xx xx xx xx` | `00 03 32 31 30 32 33 31` = "210231"                                                     | Barcode part 1 (ASCII)                                                  |
 | `00 04`     | `xx xx xx xx xx xx` | `00 04 31 54 52 52 4C 55` = "1TRRLU"                                                     | Barcode part 2 (ASCII)                                                  |
 | `00 05`     | `xx xx yy yy zz zz` | `00 05 05 00 01 0D 01 0D`                                                                | `xx` = HW version,<br>`yy` = DC-DC SW version,<br>`zz` = PFC SW version |
-| `00 06`     | `xx yy 00 00 00 00` | `00 06 01 01 00 00 00 00`                                                                | `xx` = Slot ID (bottom pin), `yy` = Slot ID (top pin)                   |
+| `00 06`     | `xx yy 00 00 00 00` | `00 06 01 01 00 00 00 00`                                                                | `xx` = Slot ID (top pin / white), `yy` = Slot ID (bottom pin / black)   |
 
 #### Slot ID
 This can be used to determine the physical slot the PSU is in, even though the PSU addresses are negotiated automatically (and thus can change from boot to boot).
 
 On the original backplane, these are connected to resistors / resistor networks / dip switches to set a unique ID for each slot.
-
-The bottom slot detect pin uses a resistor to ground, both to turn on the PSU and encode the slot ID:
-| tested resistor values | slot id value |
-|------------------------|---------------|
-| short to gnd           | `01`          |
-| 6.3k                   | `02`          |
-| 10k                    | `03`          |
-| 16.3k to 24k           | `04`          |
-| 34k                    | `05`          |
-| 47k                    | `06`          |
-| 100k                   | `07`          |
-| 147k                   | `08`          |
 
 The top slot detect pin uses a voltage injected into the pin to set the slot ID:
 | tested voltage values | slot id value |
@@ -311,6 +299,18 @@ The top slot detect pin uses a voltage injected into the pin to set the slot ID:
 | 2V                    | `06`          |
 | 2.3-2.6V              | `07`          |
 | >2.8V                 | `08`          |
+
+The bottom slot detect pin uses a resistor to ground, both to turn on the PSU and encode the slot ID:
+| tested resistor values | slot id value |
+|------------------------|---------------|
+| short to gnd           | `01`          |
+| 6.3k                   | `02`          |
+| 10k                    | `03`          |
+| 16.3k to 24k           | `04`          |
+| 34k                    | `05`          |
+| 47k                    | `06`          |
+| 100k                   | `07`          |
+| 147k                   | `08`          |
 
 
 ### `D2` E-Label Request
