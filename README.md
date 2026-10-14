@@ -376,7 +376,7 @@ Registers:
 | `01 32`   | `00 xx 00 00 00 00` |                                                                        |            | Standby<br>`00` = PSU on<br>`01` = standby                                                                              |
 | `01 34`   | `00 xx 00 00 00 00` |                                                                        |     X      | Fan mode<br>`00` = auto<br>`01` = max                                                                                   |
 
-\* Not supported on R4850G2
+\* Not supported on R4850G2  
 \*\* Only the AC input current limit _value_ is persisted, not whether the limit is _active_.  
 This means, when setting the limit to 0.1A (too low for startup) and then to 0 (off), the PSU will not start up anymore
 (fan will go full speed and output will be \<10V). To avoid this, set the limit to a high value (like 20A) before turning it off.
